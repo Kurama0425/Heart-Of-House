@@ -8,7 +8,7 @@
 - [x] Add API health endpoint
 - [x] Draft core PostgreSQL schema
 - [x] Add database connection layer
-- [ ] Add migrations
+- [x] Add migrations
 - [ ] Build first CRUD API for restaurants
 - [ ] Add automated API tests
 
@@ -71,6 +71,6 @@
 
 ## Next build target
 
-**Database migrations**
+**Restaurant CRUD API**
 
-Once migrations are in place, the next major vertical slice is the Restaurant CRUD API: data stored in PostgreSQL, exposed through the API, validated, and tested.
+This becomes the first complete vertical slice: restaurant data stored in PostgreSQL, exposed through the API, validated, and ready for automated tests.
