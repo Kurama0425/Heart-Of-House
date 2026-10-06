@@ -37,16 +37,21 @@ The stack can evolve as the project grows. The priority is understandable, maint
 
 The repository currently contains:
 
-- A minimal Express API with a health endpoint
-- Initial PostgreSQL schema for restaurants, employees, roles, ingredients, recipes, and shifts
+- A minimal Express API with a database-aware health endpoint
+- PostgreSQL connection pooling
+- Repeatable SQL database migrations
+- Initial schema for restaurants, employees, roles, ingredients, recipes, and shifts
 - Project roadmap and architecture notes
 - Environment and Git ignore templates
 
 ## Run the API locally
 
+Create `apps/api/.env` from `.env.example` and make sure `DATABASE_URL` points to a PostgreSQL database.
+
 ```bash
 cd apps/api
 npm install
+npm run db:migrate
 npm run dev
 ```
 
@@ -56,23 +61,36 @@ Then open:
 http://localhost:3000/health
 ```
 
-Expected response:
+Expected response when the API and database are healthy:
 
 ```json
 {
   "status": "ok",
-  "service": "heart-of-house-api"
+  "service": "heart-of-house-api",
+  "database": "connected"
 }
 ```
+
+## Database migrations
+
+Migration files live in `database/migrations` and run in filename order.
+
+```bash
+cd apps/api
+npm run db:migrate
+```
+
+Heart of House records successfully applied migrations in the `schema_migrations` table, so running the command again skips migrations that have already been applied.
 
 ## Repository layout
 
 ```
 heart-of-house/
 ├── apps/
-│   └── api/              # Express/TypeScript backend
+│   └── api/                    # Express/TypeScript backend
 ├── database/
-│   └── schema.sql        # Initial PostgreSQL schema
+│   ├── migrations/             # Ordered PostgreSQL migrations
+│   └── schema.sql              # Original schema reference
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   └── ROADMAP.md
