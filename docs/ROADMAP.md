@@ -7,7 +7,7 @@
 - [x] Add TypeScript/Express API scaffold
 - [x] Add API health endpoint
 - [x] Draft core PostgreSQL schema
-- [ ] Add database connection layer
+- [x] Add database connection layer
 - [ ] Add migrations
 - [ ] Build first CRUD API for restaurants
 - [ ] Add automated API tests
@@ -71,6 +71,6 @@
 
 ## Next build target
 
-**Database connection + Restaurant CRUD API**
+**Database migrations**
 
-That becomes the first complete vertical slice: data stored in PostgreSQL, exposed through the API, validated, and tested.
+Once migrations are in place, the next major vertical slice is the Restaurant CRUD API: data stored in PostgreSQL, exposed through the API, validated, and tested.
