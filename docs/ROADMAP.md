@@ -10,7 +10,9 @@
 - [x] Add database connection layer
 - [x] Add migrations
 - [ ] Build first CRUD API for restaurants
-- [ ] Add automated API tests
+  - [x] Create and list restaurants with input validation
+  - [ ] Read, update, and delete individual restaurants
+- [x] Add automated API tests (HTTP tests with an injected database; live PostgreSQL integration remains pending)
 
 ## Phase 2 — Employees and Roles
 
@@ -71,6 +73,6 @@
 
 ## Next build target
 
-**Restaurant CRUD API**
+**Complete Restaurant CRUD API**
 
-This becomes the first complete vertical slice: restaurant data stored in PostgreSQL, exposed through the API, validated, and ready for automated tests.
+Creation and listing are implemented and covered by automated HTTP tests. Next: individual restaurant lookup and updates, then a deletion policy that protects related employee/recipe data.

@@ -37,7 +37,8 @@ The stack can evolve as the project grows. The priority is understandable, maint
 
 The repository currently contains:
 
-- A minimal Express API with a database-aware health endpoint
+- An Express API with a database-aware health endpoint
+- Restaurant creation and listing with validation and automated HTTP tests
 - PostgreSQL connection pooling
 - Repeatable SQL database migrations
 - Initial schema for restaurants, employees, roles, ingredients, recipes, and shifts
@@ -103,3 +104,31 @@ heart-of-house/
 Restaurant software often solves one narrow problem well and leaves the rest of the operation spread across several systems. Heart of House is an attempt to model the restaurant as one connected operating system, starting with the workflows that actually matter to cooks, managers, and staff.
 
 This project is under active development.
+
+## Restaurant API
+
+- `POST /api/v1/restaurants` creates a restaurant (201).
+- `GET /api/v1/restaurants` lists the first 100 restaurants ordered by ID (200).
+
+Example request body:
+
+```json
+{ "name": "Sean's Kitchen", "city": "Lynchburg", "timezone": "America/New_York" }
+```
+
+Responses wrap results in `restaurant` (create) or `restaurants` (list).
+Name is required and trimmed. Optional fields are `address_line1`, `address_line2`,
+`city`, `state`, `postal_code`, `phone`, and `timezone`. Timezone defaults to
+`America/New_York`; an explicit timezone must be recognized by the Node runtime.
+Invalid input returns 400; database failures return 503 without exposing connection details.
+These endpoints are for local development until authentication/authorization is added.
+
+```bash
+cd apps/api
+npm test
+npm run build
+```
+
+Tests exercise real HTTP requests with an injected database stub, including bound SQL
+parameters, validation, list ordering/limit, and database failures. They do not require
+PostgreSQL; live database integration tests are still pending.
