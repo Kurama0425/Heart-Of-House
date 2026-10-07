@@ -1,78 +1,60 @@
 # Heart of House Roadmap
 
-## Phase 1 — Foundation
+## Product focus
 
-- [x] Establish project repository
-- [x] Define initial architecture
-- [x] Add TypeScript/Express API scaffold
-- [x] Add API health endpoint
-- [x] Draft core PostgreSQL schema
-- [x] Add database connection layer
-- [x] Add migrations
-- [ ] Build first CRUD API for restaurants
-  - [x] Create and list restaurants with input validation
-  - [ ] Read, update, and delete individual restaurants
-- [x] Add automated API tests (HTTP tests with an injected database; live PostgreSQL integration remains pending)
+A practical kitchen tool for one independent local restaurant. Design it so a small
+collection of locations could be supported later, without building chain-management
+infrastructure now. The first goal is a useful portfolio demo that a local kitchen
+could try alongside its existing tools.
 
-## Phase 2 — Employees and Roles
+## Completed foundation
 
-- [ ] Employee CRUD
-- [ ] Role CRUD
-- [ ] Assign multiple roles to employees
-- [ ] Active/inactive employee status
-- [ ] Basic employee detail page
-- [ ] Permission model
+- [x] Repository, architecture, and TypeScript/Express API
+- [x] Database-aware health endpoint and PostgreSQL connection pool
+- [x] Initial schema and repeatable migrations
+- [x] Restaurant creation and listing with validation
+- [x] Automated HTTP tests with an injected database
 
-## Phase 3 — Recipes and Food Cost
+The existing broader schema is retained as groundwork; it does not make every
+table a current product commitment.
 
-- [ ] Ingredient catalog
-- [ ] Units of measure
-- [ ] Recipe CRUD
-- [ ] Recipe ingredient quantities
-- [ ] Automatic recipe cost calculation
-- [ ] Portion/yield calculation
-- [ ] Menu-item linkage
+## First usable version — Recipes, costing, and prep
 
-## Phase 4 — Scheduling
+- [ ] Minimal restaurant lookup and profile updates
+- [ ] Ingredient catalog with purchase units, quantities, and prices
+- [ ] Explicit unit conversions for recipe quantities
+- [ ] Recipe creation, editing, instructions, and ingredient quantities
+- [ ] Batch cost, yield, and cost per portion
+- [ ] Simple recipe and costing screens
+- [ ] Daily prep lists with completion status
+- [ ] Opening and closing checklists
+- [ ] Simple staff directory (names, roles, contact details), after core kitchen tools
 
-- [ ] Shift creation
-- [ ] Weekly schedule view
-- [ ] Employee availability
-- [ ] Role coverage
-- [ ] Labor-hour totals
-- [ ] Schedule publishing state
+Build one small finished increment at a time. Prefer a complete recipe-costing
+workflow before starting several unrelated modules.
 
-## Phase 5 — Inventory and Prep
+## Necessary quality and demo work
 
-- [ ] Inventory counts
-- [ ] Par levels
-- [ ] Prep lists
-- [ ] Waste tracking
-- [ ] Low-stock indicators
-- [ ] Recipe-driven ingredient usage
+- [ ] Live PostgreSQL integration tests
+- [ ] Small demo restaurant with fictional data
+- [ ] Clear setup instructions and reproducible checks
+- [ ] Basic responsive interface
+- [ ] Authentication and restaurant access controls before real operational/contact data is hosted
+- [ ] Simple deployment, backup, and recovery instructions before a real pilot
+- [ ] Screenshots and a short portfolio case study
 
-## Phase 6 — Operations Dashboard
+## Deferred — Reconsider only after kitchen feedback
 
-- [ ] Opening/closing checklists
-- [ ] Manager notes
-- [ ] Daily operational dashboard
-- [ ] Alerts and incomplete-task indicators
-- [ ] Basic reports
-
-## Phase 7 — Portfolio Polish
-
-- [ ] Authentication and authorization
-- [ ] Responsive UI
-- [ ] Unit/integration tests
-- [ ] Seed/demo restaurant
-- [ ] Screenshots/GIFs in README
-- [ ] CI checks
-- [ ] Deployment
-- [ ] Architecture diagram
-- [ ] Portfolio case study
+- Scheduling, availability, and labor management
+- Payroll, payments, and messaging
+- Advanced inventory, purchasing, and waste analytics
+- Large reporting dashboards and integrations
+- Enterprise administration and chain-wide management
 
 ## Next build target
 
-**Complete Restaurant CRUD API**
+**Minimal restaurant lookup and profile update**, then the ingredient catalog.
 
-Creation and listing are implemented and covered by automated HTTP tests. Next: individual restaurant lookup and updates, then a deletion policy that protects related employee/recipe data.
+Restaurant deletion is not required for the first version; avoid cascading removal
+of kitchen data. Keep existing working code and narrow future development instead
+of removing useful foundations.

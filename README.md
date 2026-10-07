@@ -2,24 +2,20 @@
 
 **Your restaurant. One program.**
 
-Heart of House (HOH) is a restaurant operations platform designed to bring the day-to-day systems of a restaurant into one place instead of scattering them across scheduling apps, recipe binders, spreadsheets, inventory tools, and group chats.
+Heart of House (HOH) is a practical kitchen tool for independently owned local restaurants, starting with one restaurant and leaving room for a few locations later.
 
 ## Project goals
 
-Heart of House is being built as a real-world portfolio project with practical restaurant workflows at the center.
+Build a manageable, useful GitHub portfolio project that a local kitchen can try alongside its existing tools.
 
-Planned modules include:
+The first version focuses on:
 
-- Employee directory and role management
-- Scheduling and shift management
-- Recipes and standardized prep procedures
-- Ingredient and inventory tracking
-- Food-cost and recipe-cost calculations
-- Menu item management
-- Opening/closing and prep checklists
-- Manager dashboard and operational notes
-- Training/reference material
-- Reporting and restaurant-level analytics
+- Recipes and standardized prep instructions
+- Ingredient purchase prices, batch costs, and cost per portion
+- Daily prep and opening/closing checklists
+- A simple staff directory after the core kitchen workflows
+
+Scheduling, payroll, messaging, advanced inventory, large reporting dashboards, and chain-management features are deferred. See [the roadmap](docs/ROADMAP.md) for the current scope.
 
 ## Initial technical direction
 
@@ -101,7 +97,7 @@ heart-of-house/
 
 ## Why this project exists
 
-Restaurant software often solves one narrow problem well and leaves the rest of the operation spread across several systems. Heart of House is an attempt to model the restaurant as one connected operating system, starting with the workflows that actually matter to cooks, managers, and staff.
+Heart of House starts with Sean's kitchen experience: keeping recipes, food costs, and prep tasks understandable and usable during a real restaurant shift. The goal is a focused local-kitchen tool with a manageable support burden.
 
 This project is under active development.
 
