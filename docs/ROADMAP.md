@@ -21,6 +21,8 @@ table a current product commitment.
 ## First usable version — Recipes, costing, and prep
 
 - [ ] Minimal restaurant lookup and profile updates
+  - [x] Lookup by ID with validation and automated HTTP tests
+  - [ ] Profile updates
 - [ ] Ingredient catalog with purchase units, quantities, and prices
 - [ ] Explicit unit conversions for recipe quantities
 - [ ] Recipe creation, editing, instructions, and ingredient quantities
@@ -53,7 +55,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Minimal restaurant lookup and profile update**, then the ingredient catalog.
+**Minimal restaurant profile update**, then the ingredient catalog.
 
 Restaurant deletion is not required for the first version; avoid cascading removal
 of kitchen data. Keep existing working code and narrow future development instead

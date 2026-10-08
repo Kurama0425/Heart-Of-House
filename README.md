@@ -105,6 +105,7 @@ This project is under active development.
 
 - `POST /api/v1/restaurants` creates a restaurant (201).
 - `GET /api/v1/restaurants` lists the first 100 restaurants ordered by ID (200).
+- `GET /api/v1/restaurants/:restaurantId` retrieves a restaurant (200), or returns 404 if absent. IDs must be positive decimal PostgreSQL bigint values without leading zeros; invalid IDs return 400. IDs are represented as strings to preserve precision.
 
 Example request body:
 

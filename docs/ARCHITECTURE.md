@@ -38,6 +38,7 @@ Current endpoints include:
 - `GET /health` — checks API and database health.
 - `POST /api/v1/restaurants` — creates a restaurant.
 - `GET /api/v1/restaurants` — lists restaurants.
+- `GET /api/v1/restaurants/:restaurantId` — retrieves one restaurant by its validated ID.
 
 Restaurant request data is validated before SQL is built, and database values are passed through parameterized PostgreSQL queries.
 

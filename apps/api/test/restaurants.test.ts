@@ -89,3 +89,44 @@ test('health and unknown routes retain their response contract', async () => {
     assert.deepEqual(await missing.json(), { error: 'Not Found' });
   });
 });
+
+test('looks up a restaurant without rounding large IDs', async () => {
+  await withApi({ async query(sql, values) {
+    assert.equal(sql, 'SELECT * FROM restaurants WHERE restaurant_id = $1');
+    assert.deepEqual(values, ['9223372036854775807']);
+    return { rows: [{ restaurant_id: values![0], name: 'Cafe' }] };
+  } }, async url => {
+    const response = await fetch(url + '/api/v1/restaurants/9223372036854775807');
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { restaurant: { restaurant_id: '9223372036854775807', name: 'Cafe' } });
+  });
+});
+
+test('rejects malformed and out-of-range restaurant IDs before querying', async () => {
+  await withApi({ async query() { assert.fail('Invalid ID reached database'); } }, async url => {
+    for (const id of ['0', '-1', '01', '1.5', '1e3', 'abc', '9223372036854775808', '9'.repeat(100), '1%20OR%201=1']) {
+      const response = await fetch(url + '/api/v1/restaurants/' + id);
+      assert.equal(response.status, 400, id);
+      assert.equal(typeof (await response.json()).error, 'string');
+    }
+  });
+});
+
+test('returns 404 for a valid restaurant ID that does not exist', async () => {
+  await withApi({ async query(_sql, values) {
+    assert.deepEqual(values, ['123']);
+    return { rows: [] };
+  } }, async url => {
+    const response = await fetch(url + '/api/v1/restaurants/123');
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'Restaurant not found' });
+  });
+});
+
+test('lookup database failures do not expose connection details', async () => {
+  await withApi({ async query() { throw new Error('private connection details'); } }, async url => {
+    const response = await fetch(url + '/api/v1/restaurants/1');
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'Restaurant service unavailable' });
+  });
+});

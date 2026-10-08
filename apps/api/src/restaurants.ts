@@ -12,6 +12,28 @@ const limits: Record<string, number> = {
 export function restaurantRoutes(database: Database) {
   const router = Router();
 
+  router.get("/:restaurantId", async (req, res) => {
+    const id = req.params.restaurantId;
+    // Keep BIGSERIAL IDs as strings to avoid JavaScript number rounding.
+    if (!/^[1-9]\d{0,18}$/.test(id) || BigInt(id) > 9223372036854775807n) {
+      res.status(400).json({ error: "Restaurant ID must be a positive PostgreSQL bigint" });
+      return;
+    }
+    try {
+      const result = await database.query(
+        "SELECT * FROM restaurants WHERE restaurant_id = $1", [id]
+      );
+      if (!result.rows[0]) {
+        res.status(404).json({ error: "Restaurant not found" });
+        return;
+      }
+      res.json({ restaurant: result.rows[0] });
+    } catch (error) {
+      console.error("Restaurant lookup failed:", error);
+      res.status(503).json({ error: "Restaurant service unavailable" });
+    }
+  });
+
   router.get("/", async (_req, res) => {
     try {
       const result = await database.query(
