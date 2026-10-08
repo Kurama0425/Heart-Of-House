@@ -31,17 +31,24 @@ The web application will become the main dashboard for managers and staff.
 
 Location: `apps/api`
 
-The API is written in TypeScript using Express. Endpoints will be versioned under `/api/v1`.
+The API is written in TypeScript using Express. Endpoints are versioned under `/api/v1`.
 
-The first endpoint is:
+Current endpoints include:
 
-- `GET /health` — confirms that the API is running.
+- `GET /health` — checks API and database health.
+- `POST /api/v1/restaurants` — creates a restaurant.
+- `GET /api/v1/restaurants` — lists restaurants.
+
+Restaurant request data is validated before SQL is built, and database values are passed through parameterized PostgreSQL queries.
 
 ### Database
 
-Location: `database/schema.sql`
+Locations:
 
-PostgreSQL is the initial database target. The first schema models:
+- `database/migrations/` — ordered SQL migrations used to build and evolve the database.
+- `database/schema.sql` — original schema reference.
+
+PostgreSQL is the initial database target. The current schema models:
 
 - restaurants
 - employees
@@ -51,6 +58,8 @@ PostgreSQL is the initial database target. The first schema models:
 - recipes
 - recipe ingredients
 - shifts
+
+Applied migrations are recorded in the `schema_migrations` table so each migration runs only once.
 
 This gives later modules a shared foundation instead of inventing disconnected data structures feature by feature.
 
@@ -64,5 +73,7 @@ This gives later modules a shared foundation instead of inventing disconnected d
 /api/v1/recipes
 /api/v1/shifts
 ```
+
+Near-term development is intentionally focused on practical kitchen and restaurant-management workflows rather than attempting to build every enterprise restaurant feature at once.
 
 Authentication and authorization will be added before sensitive employee or restaurant data is exposed in a deployed environment.
