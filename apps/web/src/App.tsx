@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RestaurantSetup } from "./RestaurantSetup";
 import { Recipes } from "./Recipes";
 import { Ingredients } from "./Ingredients";
 
@@ -41,6 +42,7 @@ const apiUrl =
   import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
 function App() {
+  const [restaurantRevision, setRestaurantRevision] = useState(0);
   const [health, setHealth] = useState<HealthState>("checking");
 
   useEffect(() => {
@@ -66,7 +68,7 @@ function App() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [restaurantRevision]);
 
   const healthLabel =
     health === "checking"
@@ -180,8 +182,9 @@ function App() {
           </div>
         </section>
 
-        <Ingredients apiUrl={apiUrl} />
-        <Recipes apiUrl={apiUrl} />
+        <RestaurantSetup apiUrl={apiUrl} onCreated={() => setRestaurantRevision(current => current + 1)} />
+        <Ingredients key={`ingredients-${restaurantRevision}`} apiUrl={apiUrl} />
+        <Recipes key={`recipes-${restaurantRevision}`} apiUrl={apiUrl} />
 
         <section className="today-panel">
           <div>
