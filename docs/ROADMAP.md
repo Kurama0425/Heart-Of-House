@@ -25,7 +25,7 @@ table a current product commitment.
 - [ ] Minimal restaurant lookup and profile updates
   - [x] Lookup by ID with validation and automated HTTP tests
   - [ ] Profile updates
-- [ ] Ingredient catalog with purchase units, quantities, and prices
+- [x] Ingredient catalog: React form/list, restaurant-scoped create/list API, PostgreSQL persistence and input validation
 - [ ] Explicit unit conversions for recipe quantities
 - [ ] Recipe creation, editing, instructions, and ingredient quantities
 - [ ] Batch cost, yield, and cost per portion
@@ -57,10 +57,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Ingredient catalog**, starting with a small end-to-end slice that can be seen in the dashboard.
-
-The next useful milestone is being able to enter an ingredient with its purchase unit,
-quantity, and price, save it through the API, and display it in the web interface.
+**Explicit recipe unit conversions**, then recipe creation and ingredient quantities.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 

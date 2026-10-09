@@ -1,4 +1,5 @@
 import cors from "cors";
+import { ingredientRoutes } from "./ingredients";
 import express, { ErrorRequestHandler } from "express";
 import { restaurantRoutes, Database } from "./restaurants";
 
@@ -30,6 +31,7 @@ export function createApp(database: Database) {
     }
   });
 
+  app.use("/api/v1/restaurants/:restaurantId/ingredients", ingredientRoutes(database));
   app.use("/api/v1/restaurants", restaurantRoutes(database));
 
   app.use((_req, res) => {

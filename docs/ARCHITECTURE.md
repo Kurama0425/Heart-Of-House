@@ -78,3 +78,8 @@ This gives later modules a shared foundation instead of inventing disconnected d
 Near-term development is intentionally focused on practical kitchen and restaurant-management workflows rather than attempting to build every enterprise restaurant feature at once.
 
 Authentication and authorization will be added before sensitive employee or restaurant data is exposed in a deployed environment.
+
+Ingredient routes are nested under `/api/v1/restaurants/:restaurantId/ingredients`.
+The React catalog submits JSON to POST and loads saved records via GET. Values
+use parameterized queries against the existing ingredients table; duplicate
+names are enforced per restaurant by its existing unique constraint.

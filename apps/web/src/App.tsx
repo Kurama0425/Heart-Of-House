@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Ingredients } from "./Ingredients";
 
 type HealthState = "checking" | "connected" | "offline";
 
@@ -161,7 +162,7 @@ function App() {
             {modules.map((module, index) => (
               <article
                 className="module-card"
-                id={module.title.toLowerCase()}
+                id={module.title === "Ingredients" ? "ingredients-overview" : module.title.toLowerCase()}
                 key={module.title}
               >
                 <div className="module-number">
@@ -171,12 +172,14 @@ function App() {
                 <h3>{module.title}</h3>
                 <p>{module.description}</p>
                 <span className="coming-next">
-                  {index === 0 ? "Coming next" : "Planned"}
+                  {index === 0 ? "Available below" : "Planned"}
                 </span>
               </article>
             ))}
           </div>
         </section>
+
+        <Ingredients apiUrl={apiUrl} />
 
         <section className="today-panel">
           <div>
@@ -193,7 +196,7 @@ function App() {
             <span className="complete">Database foundation</span>
             <span className="complete">Restaurant API</span>
             <span className="complete">Dashboard shell</span>
-            <span>Ingredient catalog</span>
+            <span className="complete">Ingredient catalog</span>
           </div>
         </section>
       </main>

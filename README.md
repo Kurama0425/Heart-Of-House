@@ -143,3 +143,27 @@ npm run build
 Tests exercise real HTTP requests with an injected database stub, including bound SQL
 parameters, validation, list ordering/limit, and database failures. They do not require
 PostgreSQL; live database integration tests are still pending.
+
+## Ingredient Catalog
+
+Open **Ingredients** in the dashboard. Select a restaurant, enter a name, purchase
+unit (such as lb or each), purchased quantity, and total purchase price, then save.
+The list reloads from PostgreSQL when the page is reopened. Create a restaurant
+first if none exist (POST `/api/v1/restaurants` with `{ "name": "Demo Kitchen" }`).
+Run PostgreSQL, configure `apps/api/.env`, run `npm run db:migrate`, and start
+both the API and web dev servers using the setup instructions above.
+
+- `GET /api/v1/restaurants/:restaurantId/ingredients` lists that restaurant's ingredients.
+- `POST /api/v1/restaurants/:restaurantId/ingredients` creates one.
+- Body: `{ "name": "Flour", "purchase_unit": "lb", "purchase_quantity": 25, "purchase_price": 18.50 }`.
+- Quantity must be positive with at most four decimal places and below 100,000,000.
+- Price must be nonnegative with at most two decimal places and below 10,000,000,000.
+- Names and units are trimmed, required, and limited to 150 and 50 characters.
+- Returns 400 for invalid input, 404 for a missing restaurant, 409 for a duplicate
+  name in that restaurant, and 503 for an unavailable database.
+
+Uses the existing ingredients table; no destructive schema change is required.
+Prices are treated as dollars in this first version; unit conversion and recipe
+cost calculations are separate next steps. Authentication remains required
+before hosting real restaurant data. Tests exercise HTTP with database stubs;
+live PostgreSQL integration verification remains pending.
