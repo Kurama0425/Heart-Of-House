@@ -59,9 +59,10 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
     <p className="eyebrow">Standardize the kitchen</p><h2 id="recipe-heading">Recipe Builder</h2>
     <p>Save a batch recipe with its yield and ingredient quantities.</p>
     <label>Restaurant <select disabled={loading || saving} value={restaurantId} onChange={e => { setSelectedId(''); setRestaurantId(e.target.value); }}>
-      {!restaurants.length && <option value="">No restaurants available</option>}{restaurants.map(r => <option key={r.restaurant_id} value={r.restaurant_id}>{r.name}</option>)}
+      {!restaurants.length && <option value="">Set up your kitchen first</option>}{restaurants.map(r => <option key={r.restaurant_id} value={r.restaurant_id}>{r.name}</option>)}
     </select></label>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
+    {!loading && !error && !restaurants.length && <p><a href="#restaurant-setup">Set up your kitchen above</a> to create recipes.</p>}
     {loading && <p role="status">Loading recipes…</p>}
     {!loading && restaurantId && !ingredients.length && <p>Add ingredients in the catalog, then reload this page to start a recipe.</p>}
     <form onSubmit={save} className="ingredient-form"><fieldset disabled={loading || saving || !ingredients.length}>

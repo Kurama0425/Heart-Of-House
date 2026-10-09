@@ -53,11 +53,11 @@ export function Ingredients({ apiUrl }: { apiUrl: string }) {
     <p className="eyebrow">Food cost foundation</p><h2 id="ingredient-heading">Ingredient Catalog</h2>
     <p>Enter the quantity and price of a purchase—for example, 25 lb of flour for $18.50.</p>
     <label>Restaurant <select value={restaurantId} disabled={saving || loading} onChange={e => setRestaurantId(e.target.value)}>
-      {!restaurants.length && <option value="">No restaurants available</option>}
+      {!restaurants.length && <option value="">Set up your kitchen first</option>}
       {restaurants.map(r => <option key={r.restaurant_id} value={r.restaurant_id}>{r.name}</option>)}
     </select></label>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
-    {!loading && !error && !restaurants.length && <p>Create a restaurant through the restaurant API first (see README).</p>}
+    {!loading && !error && !restaurants.length && <p><a href="#restaurant-setup">Set up your kitchen above</a> to add ingredients.</p>}
     <form onSubmit={save} className="ingredient-form">
       <fieldset disabled={!restaurantId || loading || saving}>
         <legend>Add an ingredient</legend>

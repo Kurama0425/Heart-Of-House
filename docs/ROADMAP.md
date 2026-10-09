@@ -66,3 +66,5 @@ Restaurant profile editing remains useful but no longer blocks the kitchen workf
 Restaurant deletion is not required for the first version; avoid cascading removal
 of kitchen data. Keep existing working code and narrow future development instead
 of removing useful foundations.
+
+- [x] Dashboard first-run restaurant setup: create a kitchen and unlock Ingredients/Recipes without API commands or refreshing.

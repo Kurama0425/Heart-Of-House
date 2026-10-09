@@ -155,8 +155,11 @@ Run the focused frontend calculation tests with `cd apps/web` then `npm test`
 
 Open **Ingredients** in the dashboard. Select a restaurant, enter a name, purchase
 unit (such as lb or each), purchased quantity, and total purchase price, then save.
-The list reloads from PostgreSQL when the page is reopened. Create a restaurant
-first if none exist (POST `/api/v1/restaurants` with `{ "name": "Demo Kitchen" }`).
+The list reloads from PostgreSQL when the page is reopened. If none exist, use
+**Set up your kitchen** on the dashboard to create your restaurant. Ingredients
+and Recipes unlock immediately after creation, without a page refresh.
+If setup cannot connect, it shows a retry button and instructions to start the
+API and PostgreSQL; it never creates placeholder or demo data.
 Run PostgreSQL, configure `apps/api/.env`, run `npm run db:migrate`, and start
 both the API and web dev servers using the setup instructions above.
 
