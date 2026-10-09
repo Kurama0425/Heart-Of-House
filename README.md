@@ -17,29 +17,28 @@ The first version focuses on:
 
 Scheduling, payroll, messaging, advanced inventory, large reporting dashboards, and chain-management features are deferred. See [the roadmap](docs/ROADMAP.md) for the current scope.
 
-## Initial technical direction
+## Technical direction
 
-- **Frontend:** React + TypeScript
+- **Frontend:** React + TypeScript + Vite
 - **Backend:** Node.js + Express + TypeScript
 - **Database:** PostgreSQL
 - **API style:** REST, versioned under `/api/v1`
 - **Repository structure:** monorepo-style folders for web, API, database, and documentation
 
-The stack can evolve as the project grows. The priority is understandable, maintainable code rather than adding technology just to make the README look expensive.
+The priority is understandable, maintainable code and practical restaurant workflows.
 
 ## Current status
 
-**Phase 1 — Foundation**
-
 The repository currently contains:
 
+- A responsive Heart of House kitchen dashboard shell
+- Live frontend API/database health status
 - An Express API with a database-aware health endpoint
-- Restaurant creation and listing with validation and automated HTTP tests
+- Restaurant creation, listing, and lookup with validation and automated HTTP tests
 - PostgreSQL connection pooling
 - Repeatable SQL database migrations
 - Initial schema for restaurants, employees, roles, ingredients, recipes, and shifts
 - Project roadmap and architecture notes
-- Environment and Git ignore templates
 
 ## Run the API locally
 
@@ -52,21 +51,35 @@ npm run db:migrate
 npm run dev
 ```
 
-Then open:
+The API runs at:
+
+```
+http://localhost:3000
+```
+
+Its health endpoint is:
 
 ```
 http://localhost:3000/health
 ```
 
-Expected response when the API and database are healthy:
+## Run the web dashboard
 
-```json
-{
-  "status": "ok",
-  "service": "heart-of-house-api",
-  "database": "connected"
-}
+Open another terminal:
+
+```bash
+cd apps/web
+npm install
+npm run dev
 ```
+
+Vite will print the local dashboard URL, normally:
+
+```
+http://localhost:5173
+```
+
+By default the dashboard checks the API at `http://localhost:3000`. A different API URL can be supplied with the `VITE_API_URL` environment variable.
 
 ## Database migrations
 
@@ -84,7 +97,8 @@ Heart of House records successfully applied migrations in the `schema_migrations
 ```
 heart-of-house/
 ├── apps/
-│   └── api/                    # Express/TypeScript backend
+│   ├── api/                    # Express/TypeScript backend
+│   └── web/                    # React/Vite kitchen dashboard
 ├── database/
 │   ├── migrations/             # Ordered PostgreSQL migrations
 │   └── schema.sql              # Original schema reference
@@ -113,7 +127,7 @@ Example request body:
 { "name": "Sean's Kitchen", "city": "Lynchburg", "timezone": "America/New_York" }
 ```
 
-Responses wrap results in `restaurant` (create) or `restaurants` (list).
+Responses wrap results in `restaurant` (create/lookup) or `restaurants` (list).
 Name is required and trimmed. Optional fields are `address_line1`, `address_line2`,
 `city`, `state`, `postal_code`, `phone`, and `timezone`. Timezone defaults to
 `America/New_York`; an explicit timezone must be recognized by the Node runtime.
