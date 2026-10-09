@@ -1,3 +1,4 @@
+import { recipeRoutes } from "./recipes";
 import cors from "cors";
 import { ingredientRoutes } from "./ingredients";
 import express, { ErrorRequestHandler } from "express";
@@ -31,6 +32,7 @@ export function createApp(database: Database) {
     }
   });
 
+  app.use("/api/v1/restaurants/:restaurantId/recipes", recipeRoutes(database));
   app.use("/api/v1/restaurants/:restaurantId/ingredients", ingredientRoutes(database));
   app.use("/api/v1/restaurants", restaurantRoutes(database));
 

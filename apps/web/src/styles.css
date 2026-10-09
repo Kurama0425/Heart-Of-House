@@ -449,6 +449,10 @@ h2 {
 .ingredient-form button:disabled { opacity: .6; }
 .ingredient-panel [role="alert"] { color: #9e2525; }
 .ingredient-table { overflow-x: auto; }
+.unit-cost-preview { grid-column: 1 / -1; margin: 0; padding: 1rem; background: #eef4ef; border-radius: 8px; }
 .ingredient-table table { width: 100%; border-collapse: collapse; text-align: left; }
 .ingredient-table th, .ingredient-table td { padding: .8rem; border-bottom: 1px solid #dce2dc; }
 @media (max-width: 600px) { .ingredient-form fieldset { grid-template-columns: 1fr; } }
+
+.recipe-line { padding: 1rem; margin-block: 1rem; border: 1px solid #d9ddd5; border-radius: 8px; }
+.ingredient-form textarea { width: 100%; box-sizing: border-box; padding: .75rem; font: inherit; border: 1px solid #c9cec5; border-radius: 8px; }

@@ -26,8 +26,10 @@ table a current product commitment.
   - [x] Lookup by ID with validation and automated HTTP tests
   - [ ] Profile updates
 - [x] Ingredient catalog: React form/list, restaurant-scoped create/list API, PostgreSQL persistence and input validation
-- [ ] Explicit unit conversions for recipe quantities
-- [ ] Recipe creation, editing, instructions, and ingredient quantities
+- [x] Compatible recipe unit conversions (weight and US volume; normalized to purchase units)
+- [x] Ingredient cost per purchase unit: live form preview and catalog column
+- [x] Recipe creation, instructions, yield, ingredient quantities, saved list/detail
+- [ ] Recipe editing
 - [ ] Batch cost, yield, and cost per portion
 - [ ] Simple recipe and costing screens
 - [ ] Daily prep lists with completion status
@@ -57,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Explicit recipe unit conversions**, then recipe creation and ingredient quantities.
+**Food Costing slice:** ingredient line costs, recipe batch cost, and cost per portion in the recipe detail screen. Use the saved normalized quantities; distinguish portion yields from other yield units.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 

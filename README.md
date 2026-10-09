@@ -146,6 +146,13 @@ PostgreSQL; live database integration tests are still pending.
 
 ## Ingredient Catalog
 
+The form previews **cost per purchase unit**, and each saved ingredient displays
+the same calculation (purchase price divided by purchased quantity). For example,
+25 lb for $18.50 shows $0.74 / lb. Display uses up to four decimal places so small
+unit costs remain useful; this is an estimate, not recipe unit conversion.
+Run the focused frontend calculation tests with `cd apps/web` then `npm test`
+(Node 22.6+ is required for TypeScript test execution).
+
 Open **Ingredients** in the dashboard. Select a restaurant, enter a name, purchase
 unit (such as lb or each), purchased quantity, and total purchase price, then save.
 The list reloads from PostgreSQL when the page is reopened. Create a restaurant
@@ -163,7 +170,41 @@ both the API and web dev servers using the setup instructions above.
   name in that restaurant, and 503 for an unavailable database.
 
 Uses the existing ingredients table; no destructive schema change is required.
-Prices are treated as dollars in this first version; unit conversion and recipe
-cost calculations are separate next steps. Authentication remains required
+Prices are treated as dollars in this first version; recipe cost calculations are the next step. Authentication remains required
 before hosting real restaurant data. Tests exercise HTTP with database stubs;
 live PostgreSQL integration verification remains pending.
+
+## Recipe Builder
+
+Open **Recipes**, select the restaurant, and enter a recipe name, instructions,
+batch yield and yield unit. Add ingredients from its catalog, set quantities/units,
+and save. Select a saved recipe to load its details from PostgreSQL. If you added
+new catalog ingredients after opening the page, reload to refresh the selection.
+
+- `POST /api/v1/restaurants/:restaurantId/recipes` creates a recipe and its lines atomically.
+- `GET /api/v1/restaurants/:restaurantId/recipes` lists saved recipes.
+- `GET /api/v1/restaurants/:restaurantId/recipes/:recipeId` loads details and ingredient lines.
+- Body example:
+
+```json
+{ "name": "Dough", "instructions": "Mix and knead.", "yield_quantity": 8, "yield_unit": "portion", "ingredients": [{ "ingredient_id": "2", "quantity": 16, "unit": "oz" }] }
+```
+
+Use an ingredient ID from your selected restaurant. Names are limited to 150
+characters, instructions to 10,000, units to 50. Yield and line quantities must
+be positive, below 100,000,000, with at most four decimals. Require 1–50 unique
+ingredients. Invalid input or foreign ingredients return 400, missing resources
+404, duplicate names/catalog changes 409, unavailable database 503.
+
+Conversions support g/kg/oz/lb and ml/l/tsp/tbsp/cup/pt/qt/gal (US customary
+volume). Unknown units such as each or case must match the purchase unit.
+No weight-to-volume conversions without density. Lines persist in purchase units,
+rounded to four decimals; amounts that round to zero or exceed storage limits
+are rejected. Original entered units are not retained. No schema migration is
+needed beyond the existing initial migration. Editing and costing are pending.
+
+Validation: 20 API tests plus 3 frontend cost tests and both builds pass.
+Recipe HTTP tests use database stubs; live PostgreSQL and browser interactions
+have not been verified in this environment. PostgreSQL binaries and a cached
+Playwright browser are unavailable. Use fictional local demo data until
+authentication and restaurant authorization are implemented.

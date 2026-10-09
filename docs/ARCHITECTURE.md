@@ -83,3 +83,12 @@ Ingredient routes are nested under `/api/v1/restaurants/:restaurantId/ingredient
 The React catalog submits JSON to POST and loads saved records via GET. Values
 use parameterized queries against the existing ingredients table; duplicate
 names are enforced per restaurant by its existing unique constraint.
+
+### Recipe workflow
+
+The React Recipe Builder uses restaurant-scoped create/list/detail routes.
+The API checks ingredient ownership and unit compatibility, normalizes quantities
+to purchase units, and inserts the recipe and ingredient lines in a single
+PostgreSQL data-modifying CTE. This avoids partial recipes without requiring
+transaction state on the injected query interface. No new schema is needed.
+Recipe routes remain local-demo only until authentication/authorization.
