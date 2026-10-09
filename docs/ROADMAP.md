@@ -12,8 +12,10 @@ could try alongside its existing tools.
 - [x] Repository, architecture, and TypeScript/Express API
 - [x] Database-aware health endpoint and PostgreSQL connection pool
 - [x] Initial schema and repeatable migrations
-- [x] Restaurant creation and listing with validation
+- [x] Restaurant creation, listing, and lookup with validation
 - [x] Automated HTTP tests with an injected database
+- [x] React/Vite kitchen dashboard shell
+- [x] Responsive navigation and live API/database status
 
 The existing broader schema is retained as groundwork; it does not make every
 table a current product commitment.
@@ -40,7 +42,7 @@ workflow before starting several unrelated modules.
 - [ ] Live PostgreSQL integration tests
 - [ ] Small demo restaurant with fictional data
 - [ ] Clear setup instructions and reproducible checks
-- [ ] Basic responsive interface
+- [x] Basic responsive interface
 - [ ] Authentication and restaurant access controls before real operational/contact data is hosted
 - [ ] Simple deployment, backup, and recovery instructions before a real pilot
 - [ ] Screenshots and a short portfolio case study
@@ -55,7 +57,12 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Minimal restaurant profile update**, then the ingredient catalog.
+**Ingredient catalog**, starting with a small end-to-end slice that can be seen in the dashboard.
+
+The next useful milestone is being able to enter an ingredient with its purchase unit,
+quantity, and price, save it through the API, and display it in the web interface.
+
+Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 
 Restaurant deletion is not required for the first version; avoid cascading removal
 of kitchen data. Keep existing working code and narrow future development instead
