@@ -30,8 +30,8 @@ table a current product commitment.
 - [x] Ingredient cost per purchase unit: live form preview and catalog column
 - [x] Recipe creation, instructions, yield, ingredient quantities, saved list/detail
 - [ ] Recipe editing
-- [ ] Batch cost, yield, and cost per portion
-- [ ] Simple recipe and costing screens
+- [x] Batch cost, yield, and cost per portion
+- [x] Simple recipe and costing screens
 - [ ] Daily prep lists with completion status
 - [ ] Opening and closing checklists
 - [ ] Simple staff directory (names, roles, contact details), after core kitchen tools
@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Food Costing slice:** ingredient line costs, recipe batch cost, and cost per portion in the recipe detail screen. Use the saved normalized quantities; distinguish portion yields from other yield units.
+**Recipe editing slice:** update an existing recipe and its ingredient quantities atomically, then reload its details and food cost estimate.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 

@@ -47,7 +47,7 @@ test('lists and retrieves recipe details scoped to the requested restaurant', as
   await withApi({ async query(sql, values) {
     assert.equal(values?.[0], '1');
     if (sql.startsWith('SELECT restaurant_id')) return { rows: [{ restaurant_id: '1' }] };
-    if (sql.includes('recipe_ingredients')) { assert.deepEqual(values, ['1', '3']); return { rows: [{ ingredient_id: '2', name: 'Flour', quantity: '1', unit: 'lb' }] }; }
+    if (sql.includes('FROM recipe_ingredients')) { assert.deepEqual(values, ['1', '3']); return { rows: [{ ingredient_id: '2', name: 'Flour', quantity: '1', unit: 'lb' }] }; }
     return { rows: [{ recipe_id: '3', name: 'Dough' }] };
   } }, async url => {
     assert.equal((await (await fetch(url)).json()).recipes[0].name, 'Dough');
@@ -60,6 +60,28 @@ test('returns missing and conflict responses and hides database errors', async (
     let calls = 0;
     await withApi({ async query() { if (++calls === 1) return { rows: [{ ingredient_id: '2', name: 'Flour', purchase_unit: 'lb' }] }; throw Object.assign(new Error('private details'), { code }); } }, async url => {
       const response = await post(url, valid); assert.equal(response.status, status); assert(!JSON.stringify(await response.json()).includes('private details'));
+    });
+  }
+});
+
+test('detail exposes unrounded costing and preserves null for unavailable estimates', async () => {
+  for (const cost of [ { line_cost: '0.74', batch_cost: '0.74', portion_cost: '0.0925' },
+    { line_cost: '0', batch_cost: '0', portion_cost: null },
+    { line_cost: null, batch_cost: null, portion_cost: null } ]) {
+    await withApi({ async query(sql, values) {
+      assert.equal(values?.[0], '1');
+      if (sql.startsWith('SELECT restaurant_id')) return { rows: [{ restaurant_id: '1' }] };
+      if (sql.includes('WITH costs')) {
+        assert.deepEqual(values, ['1', '3']);
+        assert(sql.includes('count(line_cost) OVER () = count(*) OVER ()'));
+        return { rows: [{ ingredient_id: '2', name: 'Flour', ...cost }] };
+      }
+      return { rows: [{ recipe_id: '3', yield_quantity: '8', yield_unit: 'portion' }] };
+    } }, async url => {
+      const response = await fetch(url + '/3'); assert.equal(response.status, 200);
+      const { recipe } = await response.json();
+      assert.deepEqual(recipe.costing, { batch_cost: cost.batch_cost, portion_cost: cost.portion_cost });
+      assert.equal(recipe.ingredients[0].line_cost, cost.line_cost);
     });
   }
 });

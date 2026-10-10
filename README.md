@@ -211,3 +211,21 @@ Recipe HTTP tests use database stubs; live PostgreSQL and browser interactions
 have not been verified in this environment. PostgreSQL binaries and a cached
 Playwright browser are unavailable. Use fictional local demo data until
 authentication and restaurant authorization are implemented.
+
+## Recipe food costing
+
+Select a saved recipe under **Recipes** to see each ingredient line cost, the
+batch total, and cost per portion. The existing detail endpoint
+`GET /api/v1/restaurants/:restaurantId/recipes/:recipeId` now includes `costing`.
+PostgreSQL calculates `quantity * purchase_price / purchase_quantity` using
+NUMERIC values and sums before display rounding. No migration is needed.
+Costs use current catalog prices, not historical snapshots, and exclude labor,
+waste, and overhead. Only portion/portions/serving/servings yields receive a
+per-portion estimate; a batch yielding pounds or quarts still has a batch cost.
+Incompatible legacy units or invalid purchase quantities make the batch estimate
+unavailable rather than reporting a misleading partial total.
+
+Verification: API HTTP tests use injected database stubs; frontend tests cover
+currency display. Live PostgreSQL and interactive browser checks require a
+running database/browser and are separate from these tests. Keep the app local
+with fictional data until authentication and restaurant access controls exist.

@@ -1,8 +1,9 @@
+import { formatCost } from './recipeCost';
 import { FormEvent, useEffect, useState } from 'react';
 type Restaurant = { restaurant_id: string; name: string };
 type Ingredient = { ingredient_id: string; name: string; purchase_unit: string };
-type Line = { ingredient_id: string; quantity: string; unit: string; name?: string };
-type Recipe = { recipe_id: string; name: string; instructions: string; yield_quantity: string; yield_unit: string; ingredients?: Line[] };
+type Line = { ingredient_id: string; quantity: string; unit: string; name?: string; line_cost?: string | null };
+type Recipe = { recipe_id: string; name: string; instructions: string; yield_quantity: string; yield_unit: string; ingredients?: Line[]; costing?: { batch_cost: string | null; portion_cost: string | null } };
 async function request(url: string, options?: RequestInit) {
   const response = await fetch(url, options); const data = await response.json();
   if (!response.ok) throw new Error(data.error ?? 'Request failed');
@@ -87,6 +88,13 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
     {!!recipes.length && <label>Saved recipes <select value={selectedId} onChange={e => { setError(''); setSelectedId(e.target.value); }}>
       <option value="">Choose a recipe</option>{recipes.map(r => <option key={r.recipe_id} value={r.recipe_id}>{r.name} — {r.yield_quantity} {r.yield_unit}</option>)}
     </select></label>}
-    {detail && <article><h3>{detail.name}</h3><p>Batch yield: {detail.yield_quantity} {detail.yield_unit}</p><ul>{detail.ingredients?.map(i => <li key={i.ingredient_id}>{i.quantity} {i.unit} {i.name}</li>)}</ul><p style={{ whiteSpace: 'pre-wrap' }}>{detail.instructions}</p></article>}
+    {detail && <article><h3>{detail.name}</h3><p>Batch yield: {detail.yield_quantity} {detail.yield_unit}</p><div className="recipe-costing">
+      <h4>Food cost estimate</h4>
+      <p><strong>Batch cost: {formatCost(detail.costing?.batch_cost)}</strong></p>
+      <p><strong>Cost per portion: {formatCost(detail.costing?.portion_cost)}</strong></p>
+      <p>Based on current ingredient purchase prices. Ingredient cost only; excludes labor, waste, and overhead. Per-portion cost requires a yield unit of portion(s) or serving(s).</p>
+      {detail.costing?.batch_cost == null && <p role="status">Cost unavailable. Check that every ingredient has a valid purchase quantity and matching saved unit.</p>}
+      <div className="ingredient-table"><table><thead><tr><th>Ingredient</th><th>Quantity</th><th>Line cost</th></tr></thead><tbody>{detail.ingredients?.map(i => <tr key={i.ingredient_id}><td>{i.name}</td><td>{i.quantity} {i.unit}</td><td>{formatCost(i.line_cost)}</td></tr>)}</tbody></table></div>
+    </div><p style={{ whiteSpace: 'pre-wrap' }}>{detail.instructions}</p></article>}
   </section>;
 }

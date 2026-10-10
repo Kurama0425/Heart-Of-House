@@ -22,9 +22,25 @@ export function recipeRoutes(database: Database) {
       }
       const result = await database.query('SELECT * FROM recipes WHERE restaurant_id = $1 AND recipe_id = $2', [restaurantId, recipeId]);
       if (!result.rows.length) { res.status(404).json({ error: 'Recipe not found' }); return; }
-      const items = await database.query(`SELECT ri.*, i.name FROM recipe_ingredients ri JOIN ingredients i USING (ingredient_id)
-        JOIN recipes r USING (recipe_id) WHERE r.restaurant_id = $1 AND r.recipe_id = $2 ORDER BY i.name`, [restaurantId, recipeId]);
-      res.json({ recipe: { ...result.rows[0], ingredients: items.rows } });
+      // NUMERIC arithmetic stays in PostgreSQL; round only for display in React.
+      // An incompatible legacy line makes the whole estimate unavailable.
+      const items = await database.query(`WITH costs AS (
+        SELECT ri.*, i.name, i.purchase_price, i.purchase_quantity,
+          CASE WHEN lower(trim(ri.unit)) = lower(trim(i.purchase_unit)) AND i.purchase_quantity > 0
+            AND i.restaurant_id = r.restaurant_id
+            THEN ri.quantity * i.purchase_price / i.purchase_quantity END AS line_cost,
+          r.yield_quantity, r.yield_unit
+        FROM recipe_ingredients ri JOIN ingredients i USING (ingredient_id)
+        JOIN recipes r USING (recipe_id) WHERE r.restaurant_id = $1 AND r.recipe_id = $2
+      ), totals AS (
+        SELECT *, CASE WHEN count(line_cost) OVER () = count(*) OVER ()
+          THEN sum(line_cost) OVER () END AS batch_cost FROM costs
+      ) SELECT *, CASE WHEN lower(trim(yield_unit)) IN ('portion', 'portions', 'serving', 'servings')
+        AND yield_quantity > 0 THEN batch_cost / yield_quantity END AS portion_cost
+        FROM totals ORDER BY name`, [restaurantId, recipeId]);
+      const first = items.rows[0];
+      res.json({ recipe: { ...result.rows[0], ingredients: items.rows,
+        costing: { batch_cost: first?.batch_cost ?? null, portion_cost: first?.portion_cost ?? null } } });
     } catch { res.status(503).json({ error: 'Recipe service unavailable' }); }
   });
   router.post<{ restaurantId: string }>('/', async (req, res) => {
