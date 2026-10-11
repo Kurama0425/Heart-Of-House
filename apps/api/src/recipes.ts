@@ -43,7 +43,7 @@ export function recipeRoutes(database: Database) {
         costing: { batch_cost: first?.batch_cost ?? null, portion_cost: first?.portion_cost ?? null } } });
     } catch { res.status(503).json({ error: 'Recipe service unavailable' }); }
   });
-  router.post<{ restaurantId: string }>('/', async (req, res) => {
+  async function saveRecipe(req: any, res: any, recipeId?: string) {
     const body = req.body;
     const allowed = ['name', 'instructions', 'yield_quantity', 'yield_unit', 'ingredients'];
     if (!body || Array.isArray(body) || typeof body !== 'object' || Object.keys(body).some(k => !allowed.includes(k)) ||
@@ -65,8 +65,31 @@ export function recipeRoutes(database: Database) {
         if (!quantityValid(rounded)) { res.status(400).json({ error: `Incompatible units or quantity outside storage precision for ${ingredient.name}; use its purchase unit (${ingredient.purchase_unit})` }); return; }
         items.push({ ingredient_id: item.ingredient_id, quantity: rounded, unit: ingredient.purchase_unit });
       }
-      // One PostgreSQL statement: parent and children either all persist or all roll back.
-      const result = await database.query(`WITH items AS (
+      // One PostgreSQL statement: the recipe and every line either all persist or all roll back.
+      const sql = recipeId ? `WITH target AS (
+        SELECT recipe_id FROM recipes WHERE restaurant_id = $1 AND recipe_id = $7
+      ), items AS (
+        SELECT * FROM jsonb_to_recordset($6::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text)
+      ), valid AS (
+        SELECT x.* FROM items x JOIN ingredients i USING (ingredient_id) WHERE i.restaurant_id = $1
+      ), updated AS (
+        UPDATE recipes SET name = $2, instructions = $3, yield_quantity = $4,
+          yield_unit = $5, updated_at = NOW()
+        WHERE recipe_id IN (SELECT recipe_id FROM target)
+          AND (SELECT count(*) FROM valid) = (SELECT count(*) FROM items)
+        RETURNING *
+      ), removed AS (
+        DELETE FROM recipe_ingredients ri WHERE ri.recipe_id IN (SELECT recipe_id FROM updated)
+          AND NOT EXISTS (SELECT 1 FROM valid WHERE valid.ingredient_id = ri.ingredient_id)
+      ), lines AS (
+        INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
+        SELECT updated.recipe_id, valid.ingredient_id, valid.quantity, valid.unit
+        FROM updated CROSS JOIN valid
+        ON CONFLICT (recipe_id, ingredient_id) DO UPDATE
+          SET quantity = EXCLUDED.quantity, unit = EXCLUDED.unit
+        RETURNING recipe_id
+      ) SELECT updated.*, (SELECT count(*) FROM lines) AS ingredient_count FROM updated`
+      : `WITH items AS (
         SELECT * FROM jsonb_to_recordset($6::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text)
       ), valid AS (
         SELECT x.* FROM items x JOIN ingredients i USING (ingredient_id) WHERE i.restaurant_id = $1
@@ -77,14 +100,27 @@ export function recipeRoutes(database: Database) {
       ), lines AS (
         INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
         SELECT saved.recipe_id, valid.ingredient_id, valid.quantity, valid.unit FROM saved CROSS JOIN valid RETURNING recipe_id
-      ) SELECT saved.*, (SELECT count(*) FROM lines) AS ingredient_count FROM saved`,
-      [req.params.restaurantId, body.name.trim(), body.instructions.trim(), body.yield_quantity, body.yield_unit.trim(), JSON.stringify(items)]);
-      if (!result.rows.length) { res.status(409).json({ error: 'Ingredient catalog changed; reload and try again' }); return; }
-      res.status(201).json({ recipe: result.rows[0] });
+      ) SELECT saved.*, (SELECT count(*) FROM lines) AS ingredient_count FROM saved`;
+      const values = [req.params.restaurantId, body.name.trim(), body.instructions.trim(), body.yield_quantity, body.yield_unit.trim(), JSON.stringify(items)];
+      if (recipeId) values.push(recipeId);
+      const result = await database.query(sql, values);
+      if (!result.rows.length) {
+        if (recipeId) {
+          const exists = await database.query('SELECT recipe_id FROM recipes WHERE restaurant_id = $1 AND recipe_id = $2', [req.params.restaurantId, recipeId]);
+          if (!exists.rows.length) { res.status(404).json({ error: 'Recipe not found' }); return; }
+        }
+        res.status(409).json({ error: 'Ingredient catalog changed; reload and try again' }); return;
+      }
+      res.status(recipeId ? 200 : 201).json({ recipe: result.rows[0] });
     } catch (error) {
       const code = (error as { code?: string }).code;
       res.status(code === '23505' ? 409 : code === '23503' ? 404 : 503).json({ error: code === '23505' ? 'A recipe with that name already exists' : code === '23503' ? 'Restaurant or ingredient no longer exists' : 'Recipe service unavailable' });
     }
+  }
+  router.post<{ restaurantId: string }>('/', (req, res) => saveRecipe(req, res));
+  router.put<{ restaurantId: string; recipeId: string }>('/:recipeId', (req, res) => {
+    if (!idValid(req.params.recipeId)) { res.status(400).json({ error: 'Invalid recipe ID' }); return; }
+    return saveRecipe(req, res, req.params.recipeId);
   });
   return router;
 }

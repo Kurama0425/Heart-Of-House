@@ -173,7 +173,7 @@ both the API and web dev servers using the setup instructions above.
   name in that restaurant, and 503 for an unavailable database.
 
 Uses the existing ingredients table; no destructive schema change is required.
-Prices are treated as dollars in this first version; recipe cost calculations are the next step. Authentication remains required
+Prices are treated as dollars in this first version. Authentication remains required
 before hosting real restaurant data. Tests exercise HTTP with database stubs;
 live PostgreSQL integration verification remains pending.
 
@@ -204,9 +204,10 @@ volume). Unknown units such as each or case must match the purchase unit.
 No weight-to-volume conversions without density. Lines persist in purchase units,
 rounded to four decimals; amounts that round to zero or exceed storage limits
 are rejected. Original entered units are not retained. No schema migration is
-needed beyond the existing initial migration. Editing and costing are pending.
+needed beyond the existing initial migration. Saved recipes can be edited from
+their detail view.
 
-Validation: 20 API tests plus 3 frontend cost tests and both builds pass.
+Validation: 23 API tests plus 4 frontend cost tests and both builds pass.
 Recipe HTTP tests use database stubs; live PostgreSQL and browser interactions
 have not been verified in this environment. PostgreSQL binaries and a cached
 Playwright browser are unavailable. Use fictional local demo data until
@@ -229,3 +230,13 @@ Verification: API HTTP tests use injected database stubs; frontend tests cover
 currency display. Live PostgreSQL and interactive browser checks require a
 running database/browser and are separate from these tests. Keep the app local
 with fictional data until authentication and restaurant access controls exist.
+
+## Recipe editing
+
+Select a saved recipe and choose **Edit recipe** to load its name, instructions,
+yield, and ingredient lines into the form. `PUT /api/v1/restaurants/:restaurantId/recipes/:recipeId`
+validates the same fields and unit conversions as recipe creation, then updates the
+recipe and replaces all lines in one PostgreSQL statement. The refreshed detail view
+shows costs based on the edited quantities and current catalog prices. A recipe is
+always scoped to its restaurant; missing recipes return 404, conflicts return 409,
+and invalid input returns 400.

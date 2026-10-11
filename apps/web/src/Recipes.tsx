@@ -19,6 +19,7 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
   const [form, setForm] = useState({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' });
   const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState('');
   const base = `${apiUrl}/api/v1/restaurants/${restaurantId}`;
   useEffect(() => {
     let active = true;
@@ -30,7 +31,7 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
     if (!restaurantId) return;
     let active = true;
     setLoading(true); setError(''); setNotice(''); setDetail(null); setLines([]); setRecipes([]); setIngredients([]);
-    setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' });
+    setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' }); setEditingId('');
     Promise.all([request(`${base}/ingredients`), request(`${base}/recipes`)]).then(([catalog, saved]) => {
       if (active) { setIngredients(catalog.ingredients); setRecipes(saved.recipes); }
     }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setLoading(false); });
@@ -40,9 +41,11 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(''); setNotice('');
     try {
-      const data = await request(`${base}/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, yield_quantity: Number(form.yield_quantity), ingredients: lines.map(i => ({ ...i, quantity: Number(i.quantity) })) }) });
-      setRecipes(current => [...current, data.recipe].sort((a,b) => a.name.localeCompare(b.name)));
-      setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' }); setLines([]); setNotice('Recipe saved. Select it below to see its details.');
+      const data = await request(`${base}/recipes${editingId ? `/${editingId}` : ''}`, { method: editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, yield_quantity: Number(form.yield_quantity), ingredients: lines.map(i => ({ ingredient_id: i.ingredient_id, quantity: Number(i.quantity), unit: i.unit })) }) });
+      setRecipes(current => (editingId ? current.map(r => r.recipe_id === editingId ? data.recipe : r) : [...current, data.recipe]).sort((a,b) => a.name.localeCompare(b.name)));
+      const savedId = data.recipe.recipe_id; const wasEditing = !!editingId;
+      setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' }); setLines([]); setEditingId(''); setNotice(wasEditing ? 'Recipe updated and food cost recalculated.' : 'Recipe saved. Select it below to see its details.');
+      if (wasEditing) { setSelectedId(''); setTimeout(() => setSelectedId(savedId), 0); }
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save recipe'); }
     finally { setSaving(false); }
   }
@@ -56,6 +59,14 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
       .catch(e => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
   }, [base, selectedId]);
+  function beginEdit() {
+    if (!detail?.ingredients) return;
+    setForm({ name: detail.name, instructions: detail.instructions, yield_quantity: detail.yield_quantity, yield_unit: detail.yield_unit });
+    setLines(detail.ingredients.map(i => ({ ingredient_id: String(i.ingredient_id), quantity: String(i.quantity), unit: i.unit })));
+    setEditingId(detail.recipe_id); setNotice('Editing saved recipe. Make changes above, then save.');
+    document.getElementById('recipe-form')?.scrollIntoView({ behavior: 'smooth' });
+  }
+  function cancelEdit() { setEditingId(''); setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' }); setLines([]); setNotice(''); }
   return <section id="recipes" className="ingredient-panel" aria-labelledby="recipe-heading">
     <p className="eyebrow">Standardize the kitchen</p><h2 id="recipe-heading">Recipe Builder</h2>
     <p>Save a batch recipe with its yield and ingredient quantities.</p>
@@ -66,8 +77,8 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
     {!loading && !error && !restaurants.length && <p><a href="#restaurant-setup">Set up your kitchen above</a> to create recipes.</p>}
     {loading && <p role="status">Loading recipes…</p>}
     {!loading && restaurantId && !ingredients.length && <p>Add ingredients in the catalog, then reload this page to start a recipe.</p>}
-    <form onSubmit={save} className="ingredient-form"><fieldset disabled={loading || saving || !ingredients.length}>
-      <legend>New recipe</legend>
+    <form id="recipe-form" onSubmit={save} className="ingredient-form"><fieldset disabled={loading || saving || !ingredients.length}>
+      <legend>{editingId ? 'Edit recipe' : 'New recipe'}</legend>
       <label>Recipe name <input required maxLength={150} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
       <label>Batch yield <input required type="number" min="0.0001" max="99999999.9999" step="0.0001" value={form.yield_quantity} onChange={e => setForm({ ...form, yield_quantity: e.target.value })} /></label>
       <label>Yield unit <input required maxLength={50} value={form.yield_unit} onChange={e => setForm({ ...form, yield_unit: e.target.value })} /></label>
@@ -82,13 +93,14 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
         <button type="button" onClick={() => setLines(lines.filter((_, i) => i !== index))}>Remove ingredient {index + 1}</button>
       </div>)}
       <button type="button" disabled={lines.length >= Math.min(50, ingredients.length)} onClick={() => setLines([...lines, { ingredient_id: '', quantity: '1', unit: '' }])}>Add ingredient</button>{' '}
-      <button type="submit" disabled={!lines.length}>{saving ? 'Saving…' : 'Save recipe'}</button>
+      <button type="submit" disabled={!lines.length}>{saving ? 'Saving…' : editingId ? 'Save changes' : 'Save recipe'}</button>
+      {editingId && <> <button type="button" onClick={cancelEdit}>Cancel edit</button></>}
     </fieldset></form>
     {!loading && !recipes.length && restaurantId && <p>No saved recipes yet.</p>}
     {!!recipes.length && <label>Saved recipes <select value={selectedId} onChange={e => { setError(''); setSelectedId(e.target.value); }}>
       <option value="">Choose a recipe</option>{recipes.map(r => <option key={r.recipe_id} value={r.recipe_id}>{r.name} — {r.yield_quantity} {r.yield_unit}</option>)}
     </select></label>}
-    {detail && <article><h3>{detail.name}</h3><p>Batch yield: {detail.yield_quantity} {detail.yield_unit}</p><div className="recipe-costing">
+    {detail && <article><h3>{detail.name}</h3><p>Batch yield: {detail.yield_quantity} {detail.yield_unit}</p><button type="button" onClick={beginEdit}>Edit recipe</button><div className="recipe-costing">
       <h4>Food cost estimate</h4>
       <p><strong>Batch cost: {formatCost(detail.costing?.batch_cost)}</strong></p>
       <p><strong>Cost per portion: {formatCost(detail.costing?.portion_cost)}</strong></p>

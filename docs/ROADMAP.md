@@ -29,7 +29,7 @@ table a current product commitment.
 - [x] Compatible recipe unit conversions (weight and US volume; normalized to purchase units)
 - [x] Ingredient cost per purchase unit: live form preview and catalog column
 - [x] Recipe creation, instructions, yield, ingredient quantities, saved list/detail
-- [ ] Recipe editing
+- [x] Recipe editing: load a saved recipe, replace its details/ingredients atomically, and refresh food costs
 - [x] Batch cost, yield, and cost per portion
 - [x] Simple recipe and costing screens
 - [ ] Daily prep lists with completion status
@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Recipe editing slice:** update an existing recipe and its ingredient quantities atomically, then reload its details and food cost estimate.
+**Daily prep lists slice:** create a dated prep list from free-form kitchen tasks, mark tasks complete, and preserve status in PostgreSQL.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 

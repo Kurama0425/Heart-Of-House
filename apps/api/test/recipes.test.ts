@@ -12,6 +12,7 @@ async function withApi(database: Database, run: (url: string) => Promise<void>) 
   finally { await new Promise<void>((r,j) => server.close(e => e ? j(e) : r())); }
 }
 const post = (url: string, body: unknown) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const put = (url: string, body: unknown) => fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 test('converts compatible units and rejects volume/weight and unknown-unit mismatches', () => {
   assert.equal(purchaseQuantity(16, 'oz', 'lb'), 1);
   assert.equal(purchaseQuantity(1000, 'g', 'kg'), 1);
@@ -84,4 +85,30 @@ test('detail exposes unrounded costing and preserves null for unavailable estima
       assert.equal(recipe.ingredients[0].line_cost, cost.line_cost);
     });
   }
+});
+
+test('updates a scoped recipe and replaces its converted lines atomically', async () => {
+  let calls = 0;
+  await withApi({ async query(sql, values) {
+    calls++;
+    if (calls === 1) return { rows: [{ ingredient_id: '2', name: 'Flour', purchase_unit: 'lb' }] };
+    assert(sql.includes('UPDATE recipes')); assert(sql.includes('DELETE FROM recipe_ingredients')); assert(sql.includes('INSERT INTO recipe_ingredients')); assert(sql.includes('ON CONFLICT'));
+    assert.deepEqual(values?.slice(0, 5), ['1', 'Dough', 'Mix and knead.', 8, 'portion']);
+    assert.equal(values?.[6], '3');
+    return { rows: [{ recipe_id: '3', name: 'Dough', yield_quantity: '8', yield_unit: 'portion' }] };
+  } }, async url => {
+    const response = await put(url + '/3', valid); assert.equal(response.status, 200);
+    assert.equal((await response.json()).recipe.recipe_id, '3');
+  });
+  assert.equal(calls, 2);
+});
+
+test('recipe update validates IDs and reports a missing scoped recipe', async () => {
+  await withApi({ async query(sql) {
+    if (sql.startsWith('SELECT * FROM ingredients')) return { rows: [{ ingredient_id: '2', name: 'Flour', purchase_unit: 'lb' }] };
+    return { rows: [] };
+  } }, async url => {
+    assert.equal((await put(url + '/0', valid)).status, 400);
+    assert.equal((await put(url + '/999', valid)).status, 404);
+  });
 });
