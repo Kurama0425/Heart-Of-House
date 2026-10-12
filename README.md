@@ -240,3 +240,21 @@ recipe and replaces all lines in one PostgreSQL statement. The refreshed detail 
 shows costs based on the edited quantities and current catalog prices. A recipe is
 always scoped to its restaurant; missing recipes return 404, conflicts return 409,
 and invalid input returns 400.
+
+## Daily prep lists
+
+Open **Prep**, choose a restaurant and date, then enter one prep task per line.
+Creating the list saves all tasks together. Checkboxes update immediately and each
+completion is persisted in PostgreSQL, so the line can refresh or reopen the date
+without losing progress.
+
+- `GET /api/v1/restaurants/:restaurantId/prep-lists?date=YYYY-MM-DD` loads one day.
+- `POST /api/v1/restaurants/:restaurantId/prep-lists` creates its title and 1–50 tasks.
+- `PATCH /api/v1/restaurants/:restaurantId/prep-lists/tasks/:taskId` sets `is_complete`.
+
+Dates must be real calendar dates. Titles are limited to 150 characters and tasks
+to 300 characters. Task updates are restaurant-scoped, preventing a task ID from
+being changed through another restaurant's URL. Run `npm run db:migrate` in
+`apps/api` after pulling to apply `002_prep_lists.sql` before using this screen.
+API tests use injected database stubs; live PostgreSQL and browser checks remain
+separate. Keep operational data local until authentication and access controls exist.

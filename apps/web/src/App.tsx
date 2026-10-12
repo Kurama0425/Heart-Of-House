@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RestaurantSetup } from "./RestaurantSetup";
 import { Recipes } from "./Recipes";
 import { Ingredients } from "./Ingredients";
+import { PrepLists } from "./PrepLists";
 
 type HealthState = "checking" | "connected" | "offline";
 
@@ -185,6 +186,7 @@ function App() {
         <RestaurantSetup apiUrl={apiUrl} onCreated={() => setRestaurantRevision(current => current + 1)} />
         <Ingredients key={`ingredients-${restaurantRevision}`} apiUrl={apiUrl} />
         <Recipes key={`recipes-${restaurantRevision}`} apiUrl={apiUrl} />
+        <PrepLists key={`prep-${restaurantRevision}`} apiUrl={apiUrl} />
 
         <section className="today-panel">
           <div>
