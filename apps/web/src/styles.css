@@ -513,3 +513,9 @@ h2 {
 
 .recipe-line { padding: 1rem; margin-block: 1rem; border: 1px solid #d9ddd5; border-radius: 8px; }
 .ingredient-form textarea { width: 100%; box-sizing: border-box; padding: .75rem; font: inherit; border: 1px solid #c9cec5; border-radius: 8px; }
+
+.checklist-workspace { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.checklist-workspace fieldset { height: 100%; box-sizing: border-box; }
+.checklist-runs { display: grid; gap: 1rem; margin-top: 1.25rem; }
+.checklist-type { color: #8f998f; font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+@media (max-width: 760px) { .checklist-workspace { grid-template-columns: 1fr; } }

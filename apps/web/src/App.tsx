@@ -3,6 +3,7 @@ import { RestaurantSetup } from "./RestaurantSetup";
 import { Recipes } from "./Recipes";
 import { Ingredients } from "./Ingredients";
 import { PrepLists } from "./PrepLists";
+import { Checklists } from "./Checklists";
 
 type HealthState = "checking" | "connected" | "offline";
 
@@ -176,7 +177,7 @@ function App() {
                 <h3>{module.title}</h3>
                 <p>{module.description}</p>
                 <span className="coming-next">
-                  {index < 2 ? "Available below" : "Planned"}
+                  {index < 4 ? "Available below" : "Planned"}
                 </span>
               </article>
             ))}
@@ -187,6 +188,7 @@ function App() {
         <Ingredients key={`ingredients-${restaurantRevision}`} apiUrl={apiUrl} />
         <Recipes key={`recipes-${restaurantRevision}`} apiUrl={apiUrl} />
         <PrepLists key={`prep-${restaurantRevision}`} apiUrl={apiUrl} />
+        <Checklists key={`checklists-${restaurantRevision}`} apiUrl={apiUrl} />
 
         <section className="today-panel">
           <div>

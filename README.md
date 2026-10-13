@@ -258,3 +258,22 @@ being changed through another restaurant's URL. Run `npm run db:migrate` in
 `apps/api` after pulling to apply `002_prep_lists.sql` before using this screen.
 API tests use injected database stubs; live PostgreSQL and browser checks remain
 separate. Keep operational data local until authentication and access controls exist.
+
+## Opening and closing checklists
+
+Open **Checklists** to create a reusable opening or closing template from one task
+per line. Choose a date, template, and shift label to start a fresh copy; checking
+tasks off persists their completion and survives refreshes. A template can be reused
+across shifts without changing earlier runs, because each run snapshots its task text.
+
+- `GET/POST /api/v1/restaurants/:restaurantId/checklists/templates` lists or creates templates.
+- `GET /api/v1/restaurants/:restaurantId/checklists/runs?date=YYYY-MM-DD` lists that day's runs.
+- `POST /api/v1/restaurants/:restaurantId/checklists/runs` starts a run from a template.
+- `PATCH /api/v1/restaurants/:restaurantId/checklists/runs/tasks/:taskId` updates completion.
+
+Names are limited to 150 characters, shift labels to 80, and task text to 300.
+Templates require an opening/closing type and 1–50 tasks. Duplicate template names
+and duplicate template/date/shift runs return 409. Task updates are restaurant-scoped.
+After pulling, run `npm run db:migrate` in `apps/api` to apply
+`003_checklists.sql`. Tests use database stubs; live PostgreSQL and browser interaction
+remain unverified. Authentication is still required before hosting real operational data.

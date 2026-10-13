@@ -33,7 +33,7 @@ table a current product commitment.
 - [x] Batch cost, yield, and cost per portion
 - [x] Simple recipe and costing screens
 - [x] Daily prep lists: dated free-form tasks with persistent completion status
-- [ ] Opening and closing checklists
+- [x] Opening and closing checklists: reusable templates and fresh dated shift runs with persistent completion
 - [ ] Simple staff directory (names, roles, contact details), after core kitchen tools
 
 Build one small finished increment at a time. Prefer a complete recipe-costing
@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Opening and closing checklists slice:** create reusable checklist templates and start a fresh, trackable run for each shift.
+**Restaurant profile editing:** let a kitchen correct its contact details and timezone without database commands.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 
