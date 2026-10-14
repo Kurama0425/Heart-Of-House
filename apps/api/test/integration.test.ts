@@ -108,7 +108,14 @@ test('real PostgreSQL recipe costing, prep, and checklist workflows', {
     assert.equal((await send('/999999/checklists/runs/tasks/' + runTaskId, 'PATCH', { is_complete: false })).status, 404);
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-    try { if (restaurantId) await pool.query('DELETE FROM restaurants WHERE restaurant_id = $1', [restaurantId]); }
+    try {
+      if (restaurantId) {
+        // Remove only this test kitchen’s dependents before RESTRICT references.
+        await pool.query('DELETE FROM recipes WHERE restaurant_id = $1', [restaurantId]);
+        await pool.query('DELETE FROM checklist_runs WHERE restaurant_id = $1', [restaurantId]);
+        await pool.query('DELETE FROM restaurants WHERE restaurant_id = $1', [restaurantId]);
+      }
+    }
     finally { await pool.end(); }
   }
 });
