@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Restaurant = { restaurant_id: string; name: string };
 type PrepTask = { prep_task_id: string; description: string; position: number; is_complete: boolean };
@@ -25,6 +25,8 @@ export function PrepLists({ apiUrl }: { apiUrl: string }) {
   const [prepList, setPrepList] = useState<PrepList | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pendingTasks, setPendingTasks] = useState<Set<string>>(new Set());
+  const pendingRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState("");
   const tasks = useMemo(() => taskText.split("\n").map(task => task.trim()).filter(Boolean), [taskText]);
 
@@ -40,9 +42,9 @@ export function PrepLists({ apiUrl }: { apiUrl: string }) {
   }, [apiUrl]);
 
   useEffect(() => {
-    if (!restaurantId) { setPrepList(null); return; }
+    if (!restaurantId) { setPrepList(null); setLoading(false); return; }
     let active = true;
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setPrepList(null);
     request(`${apiUrl}/api/v1/restaurants/${restaurantId}/prep-lists?date=${date}`)
       .then(data => { if (active) setPrepList(data.prep_list); })
       .catch(error => { if (active) setError(error.message); })
@@ -63,6 +65,9 @@ export function PrepLists({ apiUrl }: { apiUrl: string }) {
   }
 
   async function toggleTask(task: PrepTask) {
+    if (pendingRef.current.has(task.prep_task_id)) return;
+    pendingRef.current.add(task.prep_task_id);
+    setPendingTasks(new Set(pendingRef.current));
     const next = !task.is_complete;
     setPrepList(current => current ? { ...current, tasks: current.tasks.map(item =>
       item.prep_task_id === task.prep_task_id ? { ...item, is_complete: next } : item) } : current);
@@ -75,6 +80,9 @@ export function PrepLists({ apiUrl }: { apiUrl: string }) {
       setPrepList(current => current ? { ...current, tasks: current.tasks.map(item =>
         item.prep_task_id === task.prep_task_id ? task : item) } : current);
       setError(error instanceof Error ? error.message : "Unable to update task");
+    } finally {
+      pendingRef.current.delete(task.prep_task_id);
+      setPendingTasks(new Set(pendingRef.current));
     }
   }
 
@@ -84,11 +92,11 @@ export function PrepLists({ apiUrl }: { apiUrl: string }) {
     <p className="eyebrow">Shift execution</p><h2 id="prep-heading">Daily Prep List</h2>
     <p>Build the day’s list, then check tasks off on the line. Completion survives a refresh.</p>
     <div className="prep-controls">
-      <label>Restaurant <select value={restaurantId} disabled={saving || loading} onChange={event => setRestaurantId(event.target.value)}>
+      <label>Restaurant <select value={restaurantId} disabled={saving || loading || pendingTasks.size > 0} onChange={event => setRestaurantId(event.target.value)}>
         {!restaurants.length && <option value="">Set up your kitchen first</option>}
         {restaurants.map(restaurant => <option key={restaurant.restaurant_id} value={restaurant.restaurant_id}>{restaurant.name}</option>)}
       </select></label>
-      <label>Prep date <input type="date" value={date} disabled={saving} onChange={event => setDate(event.target.value)} /></label>
+      <label>Prep date <input type="date" value={date} disabled={saving || pendingTasks.size > 0} onChange={event => setDate(event.target.value)} /></label>
     </div>
     {error && <p role="alert">{error}</p>}
     {loading ? <p role="status">Loading prep list…</p> : !prepList ?
@@ -106,7 +114,7 @@ export function PrepLists({ apiUrl }: { apiUrl: string }) {
         <progress value={completed} max={prepList.tasks.length} aria-label={`${completed} of ${prepList.tasks.length} tasks complete`} />
         <ul className="prep-tasks">
           {prepList.tasks.map(task => <li key={task.prep_task_id} className={task.is_complete ? "complete" : ""}>
-            <label><input type="checkbox" checked={task.is_complete} onChange={() => toggleTask(task)} /> <span>{task.description}</span></label>
+            <label><input type="checkbox" checked={task.is_complete} disabled={pendingTasks.has(task.prep_task_id)} onChange={() => toggleTask(task)} /> <span>{task.description}</span></label>
           </li>)}
         </ul>
       </div>}

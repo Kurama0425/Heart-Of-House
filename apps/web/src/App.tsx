@@ -167,7 +167,7 @@ function App() {
             {modules.map((module, index) => (
               <article
                 className="module-card"
-                id={["Ingredients", "Recipes"].includes(module.title) ? `${module.title.toLowerCase()}-overview` : module.title.toLowerCase()}
+                id={`${module.title.toLowerCase()}-overview`}
                 key={module.title}
               >
                 <div className="module-number">
