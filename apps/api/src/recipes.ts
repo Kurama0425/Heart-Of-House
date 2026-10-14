@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { Database } from './restaurants';
 import { purchaseQuantity } from './recipeUnits';
 const idValid = (id: unknown): id is string => typeof id === 'string' && /^[1-9]\d{0,18}$/.test(id) && BigInt(id) <= 9223372036854775807n;
@@ -43,7 +43,7 @@ export function recipeRoutes(database: Database) {
         costing: { batch_cost: first?.batch_cost ?? null, portion_cost: first?.portion_cost ?? null } } });
     } catch { res.status(503).json({ error: 'Recipe service unavailable' }); }
   });
-  async function saveRecipe(req: any, res: any, recipeId?: string) {
+  async function saveRecipe(req: Request, res: Response, recipeId?: string) {
     const body = req.body;
     const allowed = ['name', 'instructions', 'yield_quantity', 'yield_unit', 'ingredients'];
     if (!body || Array.isArray(body) || typeof body !== 'object' || Object.keys(body).some(k => !allowed.includes(k)) ||
@@ -63,13 +63,14 @@ export function recipeRoutes(database: Database) {
         const converted = purchaseQuantity(item.quantity, item.unit, ingredient.purchase_unit);
         const rounded = converted === null ? 0 : Math.round(converted * 10000) / 10000;
         if (!quantityValid(rounded)) { res.status(400).json({ error: `Incompatible units or quantity outside storage precision for ${ingredient.name}; use its purchase unit (${ingredient.purchase_unit})` }); return; }
-        items.push({ ingredient_id: item.ingredient_id, quantity: rounded, unit: ingredient.purchase_unit });
+        items.push({ ingredient_id: item.ingredient_id, quantity: rounded, unit: ingredient.purchase_unit,
+          original_quantity: item.quantity, original_unit: item.unit.trim() });
       }
       // One PostgreSQL statement: the recipe and every line either all persist or all roll back.
       const sql = recipeId ? `WITH target AS (
         SELECT recipe_id FROM recipes WHERE restaurant_id = $1 AND recipe_id = $7
       ), items AS (
-        SELECT * FROM jsonb_to_recordset($6::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text)
+        SELECT * FROM jsonb_to_recordset($6::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text, original_quantity numeric, original_unit text)
       ), valid AS (
         SELECT x.* FROM items x JOIN ingredients i USING (ingredient_id) WHERE i.restaurant_id = $1
       ), updated AS (
@@ -82,15 +83,16 @@ export function recipeRoutes(database: Database) {
         DELETE FROM recipe_ingredients ri WHERE ri.recipe_id IN (SELECT recipe_id FROM updated)
           AND NOT EXISTS (SELECT 1 FROM valid WHERE valid.ingredient_id = ri.ingredient_id)
       ), lines AS (
-        INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
-        SELECT updated.recipe_id, valid.ingredient_id, valid.quantity, valid.unit
+        INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, original_quantity, original_unit)
+        SELECT updated.recipe_id, valid.ingredient_id, valid.quantity, valid.unit, valid.original_quantity, valid.original_unit
         FROM updated CROSS JOIN valid
         ON CONFLICT (recipe_id, ingredient_id) DO UPDATE
-          SET quantity = EXCLUDED.quantity, unit = EXCLUDED.unit
+          SET quantity = EXCLUDED.quantity, unit = EXCLUDED.unit,
+              original_quantity = EXCLUDED.original_quantity, original_unit = EXCLUDED.original_unit
         RETURNING recipe_id
       ) SELECT updated.*, (SELECT count(*) FROM lines) AS ingredient_count FROM updated`
       : `WITH items AS (
-        SELECT * FROM jsonb_to_recordset($6::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text)
+        SELECT * FROM jsonb_to_recordset($6::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text, original_quantity numeric, original_unit text)
       ), valid AS (
         SELECT x.* FROM items x JOIN ingredients i USING (ingredient_id) WHERE i.restaurant_id = $1
       ), saved AS (
@@ -98,8 +100,8 @@ export function recipeRoutes(database: Database) {
         SELECT $1, $2, $3, $4, $5 WHERE (SELECT count(*) FROM valid) = (SELECT count(*) FROM items)
         RETURNING *
       ), lines AS (
-        INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
-        SELECT saved.recipe_id, valid.ingredient_id, valid.quantity, valid.unit FROM saved CROSS JOIN valid RETURNING recipe_id
+        INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, original_quantity, original_unit)
+        SELECT saved.recipe_id, valid.ingredient_id, valid.quantity, valid.unit, valid.original_quantity, valid.original_unit FROM saved CROSS JOIN valid RETURNING recipe_id
       ) SELECT saved.*, (SELECT count(*) FROM lines) AS ingredient_count FROM saved`;
       const values = [req.params.restaurantId, body.name.trim(), body.instructions.trim(), body.yield_quantity, body.yield_unit.trim(), JSON.stringify(items)];
       if (recipeId) values.push(recipeId);

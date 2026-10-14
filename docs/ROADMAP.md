@@ -41,9 +41,9 @@ workflow before starting several unrelated modules.
 
 ## Necessary quality and demo work
 
-- [ ] Live PostgreSQL integration tests
+- [x] Opt-in live PostgreSQL integration test for recipe/costing, prep, and checklists (CI verification pending)
 - [ ] Small demo restaurant with fictional data
-- [ ] Clear setup instructions and reproducible checks
+- [x] Local setup instructions and reproducible CI test/build workflow
 - [x] Basic responsive interface
 - [ ] Authentication and restaurant access controls before real operational/contact data is hosted
 - [ ] Simple deployment, backup, and recovery instructions before a real pilot
@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Restaurant profile editing:** let a kitchen correct its contact details and timezone without database commands.
+**Verify stabilization in CI and trial a small fictional recipe import**, then **Restaurant profile editing:** let a kitchen correct its contact details and timezone without database commands.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 
@@ -68,3 +68,15 @@ of kitchen data. Keep existing working code and narrow future development instea
 of removing useful foundations.
 
 - [x] Dashboard first-run restaurant setup: create a kitchen and unlock Ingredients/Recipes without API commands or refreshing.
+
+## October stabilization sprint
+
+- [x] Clear stale prep/checklist data during restaurant/date loads.
+- [x] Disable same-task checkbox writes until the prior update completes.
+- [x] Add migration 004 to preserve new recipe input units and support unknown prices.
+- [x] Add case/whitespace-insensitive ingredient uniqueness (migration may require
+  manual reconciliation if legacy duplicates already exist).
+- [x] Add PostgreSQL integration test and GitHub Actions workflow (run status must be checked).
+- [x] Document a preview-first bulk recipe import format.
+- [ ] Implement reviewed CSV import preview and transaction-safe import after a real kitchen sample.
+- [ ] Verify interactive browser workflows on Sean's actual local setup.

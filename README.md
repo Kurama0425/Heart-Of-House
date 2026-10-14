@@ -203,13 +203,14 @@ Conversions support g/kg/oz/lb and ml/l/tsp/tbsp/cup/pt/qt/gal (US customary
 volume). Unknown units such as each or case must match the purchase unit.
 No weight-to-volume conversions without density. Lines persist in purchase units,
 rounded to four decimals; amounts that round to zero or exceed storage limits
-are rejected. Original entered units are not retained. No schema migration is
-needed beyond the existing initial migration. Saved recipes can be edited from
+are rejected. Original entered units and quantities are retained alongside normalized purchase-unit
+quantities after migration 004. Older lines are backfilled with their saved purchase units
+because the original entered measurements cannot be recovered. Saved recipes can be edited from
 their detail view.
 
 Validation: 23 API tests plus 4 frontend cost tests and both builds pass.
 Recipe HTTP tests use database stubs; live PostgreSQL and browser interactions
-have not been verified in this environment. PostgreSQL binaries and a cached
+must still be verified in the target environment. PostgreSQL binaries and a cached
 Playwright browser are unavailable. Use fictional local demo data until
 authentication and restaurant authorization are implemented.
 
@@ -277,3 +278,57 @@ and duplicate template/date/shift runs return 409. Task updates are restaurant-s
 After pulling, run `npm run db:migrate` in `apps/api` to apply
 `003_checklists.sql`. Tests use database stubs; live PostgreSQL and browser interaction
 remain unverified. Authentication is still required before hosting real operational data.
+
+## Stabilization sprint and safe local upgrade (October 2026)
+
+After pulling, **back up your existing PostgreSQL database**, then run
+`npm run db:migrate` from `apps/api` before starting the app.
+Migration `004_recipe_import_readiness.sql` adds original recipe quantity/unit
+columns, allows an unpriced ingredient to use SQL NULL, and enforces a
+case/whitespace-insensitive unique ingredient name per restaurant. Existing
+zero prices remain zero (their intent cannot be inferred). Existing recipe
+measurements are backfilled from their already-normalized purchase units.
+No existing recipe or ingredient is deleted.
+
+**If migration 004 fails due to duplicate ingredient names**, do not delete
+records blindly. Inspect case/whitespace variants within each restaurant,
+reconcile references intentionally, and rerun the migration. The failed
+migration rolls back rather than silently merging or deleting data.
+
+Ingredient prices are now optional. Leave the price blank for **unknown**;
+enter `0` only when the ingredient is genuinely free. An unknown price makes
+the full recipe cost unavailable rather than displaying a misleading partial
+estimate. The recipe editor retains the quantities/units you originally
+entered (for example, `16 oz`), while costing uses normalized purchase units.
+
+Prep and checklist screens clear old results while switching restaurant/date,
+and disable individual checkboxes during a save to prevent overlapping writes.
+The API binds to `127.0.0.1` by default for local use; only set `HOST` for
+an intentionally configured trusted environment. **There is still no user
+authentication or restaurant authorization. Do not deploy with real data.**
+
+### Tests and CI
+
+GitHub Actions runs API/web tests and production builds on pushes and pull
+requests, using a disposable PostgreSQL service for integration coverage.
+To run database integration tests locally, create a **disposable** database
+whose name ends in `_test`, run migrations against that database, then use:
+
+```bash
+cd apps/api
+RUN_DB_INTEGRATION=1 DATABASE_URL=postgresql://localhost/heart_of_house_test npm test
+```
+
+On Windows PowerShell, set `$env:RUN_DB_INTEGRATION='1'` and
+`$env:DATABASE_URL='<your test database connection string>'` before
+`npm.cmd test`. Integration tests refuse databases without a `_test`
+suffix and clean up only their own test restaurant. Regular `npm test`
+still runs stub-based HTTP tests without PostgreSQL.
+
+### Preparing a bulk recipe import
+
+Do **not** paste hundreds of recipes directly into the database. Use
+[the import guide](docs/RECIPE_IMPORT.md) to organize source recipes and
+match their ingredient names/units to the catalog. A reviewed bulk importer
+is still to be built; the guide defines the expected source format and
+validation rules. Importing should preview conflicts before any write.
