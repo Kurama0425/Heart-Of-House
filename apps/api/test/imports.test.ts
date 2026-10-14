@@ -20,3 +20,11 @@ test('imports validate confirmation, IDs, body/CSV size and unavailable database
     await post('/1/imports/preview',{ingredients_csv:'x'.repeat(2100000)},413);
   } finally { await new Promise<void>(r => server.close(()=>r())); }
 });
+test('untrusted websites cannot use the local API; configured development origin works', async () => {
+  const server=createApp({async query(){return {rows:[]};}}).listen(0,'127.0.0.1'); await new Promise<void>(r=>server.once('listening',r));
+  const a=server.address(); assert(a && typeof a!=='string'); const url=`http://127.0.0.1:${a.port}/health`;
+  try {
+    assert.equal((await fetch(url,{headers:{Origin:'https://untrusted.example'}})).status,403);
+    const response=await fetch(url,{headers:{Origin:'http://localhost:5173'}}); assert.equal(response.status,200); assert.equal(response.headers.get('access-control-allow-origin'),'http://localhost:5173');
+  } finally {await new Promise<void>(r=>server.close(()=>r()));}
+});

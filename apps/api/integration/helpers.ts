@@ -8,7 +8,7 @@ export async function withDatabase(run: (db: Pool, admin: Pool, schema: string, 
   const admin = new Pool({ connectionString: process.env.TEST_DATABASE_URL, connectionTimeoutMillis: 5000 });
   const schema = 'hoh_' + randomUUID().replace(/-/g, '');
   await admin.query(`CREATE SCHEMA ${schema}`);
-  const db = new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}`, connectionTimeoutMillis: 5000, statement_timeout: 15000 });
+  const db = new Pool({ connectionString: process.env.TEST_DATABASE_URL, options: `-c search_path=${schema}`, application_name: schema, connectionTimeoutMillis: 5000, statement_timeout: 15000 });
   const server = createApp(db).listen(0, '127.0.0.1'); await new Promise<void>(r => server.once('listening', r));
   const a = server.address(); assert(a && typeof a !== 'string');
   try { if (migrate) await runMigrations(db); await run(db, admin, schema, `http://127.0.0.1:${a.port}`); }

@@ -9,7 +9,9 @@ CREATE TABLE import_batches (
   summary JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '24 hours',
-  committed_at TIMESTAMPTZ,
-  UNIQUE (restaurant_id, source_hash)
+  committed_at TIMESTAMPTZ
 );
 CREATE INDEX idx_import_batches_restaurant ON import_batches (restaurant_id, created_at);
+
+CREATE UNIQUE INDEX import_batches_committed_source_uniq
+  ON import_batches (restaurant_id, source_hash) WHERE status = 'committed';

@@ -12,7 +12,7 @@ async function snapshot(client: TransactionClient, restaurantId: string, lock = 
 }
 function previewResponse(batch: any) {
   return { import_id: batch.import_id, status: batch.status, can_commit: batch.status === 'preview', expires_at: batch.expires_at,
-    preview: batch.status === 'preview' ? batch.plan : undefined, summary: batch.summary ?? undefined };
+    expired: batch.expired ?? false, preview: batch.status === 'preview' ? batch.plan : undefined, summary: batch.summary ?? undefined };
 }
 export function importRoutes(database: Database) {
   const router = Router({ mergeParams: true });
@@ -34,16 +34,14 @@ export function importRoutes(database: Database) {
       const restaurant = await client.query('SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1', [req.params.restaurantId]);
       if (!restaurant.rows.length) { await client.query('ROLLBACK'); res.status(404).json({ error: 'Restaurant not found' }); return; }
       const sourceHash = hash(['csv-v1', body.ingredients_csv ?? '', body.recipes_csv ?? '']);
-      const previous = await client.query('SELECT * FROM import_batches WHERE restaurant_id = $1 AND source_hash = $2', [req.params.restaurantId, sourceHash]);
+      const previous = await client.query("SELECT * FROM import_batches WHERE restaurant_id = $1 AND source_hash = $2 AND status = 'committed'", [req.params.restaurantId, sourceHash]);
       if (previous.rows[0]?.status === 'committed') { await client.query('COMMIT'); res.json({ ...previewResponse(previous.rows[0]), already_imported: true }); return; }
       const state = await snapshot(client, req.params.restaurantId);
       const plan = buildImportPlan(body.ingredients_csv ?? '', body.recipes_csv ?? '', state.catalog, state.recipes);
       if (plan.errors.length) { await client.query('ROLLBACK'); res.json({ import_id: null, status: 'invalid', can_commit: false, preview: plan }); return; }
       const result = await client.query(`INSERT INTO import_batches (import_id, restaurant_id, source_hash, snapshot_hash, plan)
         VALUES ($1, $2, $3, $4, $5::jsonb)
-        ON CONFLICT (restaurant_id, source_hash) DO UPDATE SET snapshot_hash = EXCLUDED.snapshot_hash,
-          plan = EXCLUDED.plan, expires_at = NOW() + INTERVAL '24 hours'
-        WHERE import_batches.status = 'preview' RETURNING *`,
+        RETURNING *`,
         [randomUUID(), req.params.restaurantId, sourceHash, state.hash, JSON.stringify(plan)]);
       if (!result.rows.length) { await client.query('ROLLBACK'); res.status(409).json({ error: 'Import changed concurrently; request preview again' }); return; }
       await client.query('COMMIT'); res.json(previewResponse(result.rows[0]));
@@ -58,6 +56,10 @@ export function importRoutes(database: Database) {
     try {
       const result = await database.query('SELECT *, expires_at <= NOW() AS expired FROM import_batches WHERE restaurant_id = $1 AND import_id = $2', [req.params.restaurantId, req.params.importId]);
       if (!result.rows.length) { res.status(404).json({ error: 'Import not found' }); return; }
+      if (result.rows[0].status === 'preview') {
+        const completed = await database.query("SELECT * FROM import_batches WHERE restaurant_id = $1 AND source_hash = $2 AND status = 'committed'", [req.params.restaurantId, result.rows[0].source_hash]);
+        if (completed.rows.length) { res.json({ ...previewResponse(completed.rows[0]), requested_import_id: req.params.importId }); return; }
+      }
       res.json({ ...previewResponse(result.rows[0]), can_commit: result.rows[0].status === 'preview' && !result.rows[0].expired });
     } catch { res.status(503).json({ error: 'Import service unavailable' }); }
   });
@@ -74,21 +76,29 @@ export function importRoutes(database: Database) {
       const batch = result.rows[0];
       if (!batch) { await client.query('ROLLBACK'); res.status(404).json({ error: 'Import not found' }); return; }
       if (batch.status === 'committed') { await client.query('COMMIT'); res.json({ import_id: batch.import_id, status: 'committed', already_committed: true, summary: batch.summary }); return; }
+      const completedSource = await client.query("SELECT import_id, summary FROM import_batches WHERE restaurant_id = $1 AND source_hash = $2 AND status = 'committed'", [req.params.restaurantId, batch.source_hash]);
+      if (completedSource.rows.length) {
+        await client.query('COMMIT'); res.json({ import_id: completedSource.rows[0].import_id, requested_import_id: batch.import_id, status: 'committed', already_committed: true, summary: completedSource.rows[0].summary }); return;
+      }
       if (batch.expired) { await client.query('ROLLBACK'); res.status(409).json({ error: 'Preview expired; request a fresh preview' }); return; }
       const state = await snapshot(client, req.params.restaurantId, true);
       if (state.hash !== batch.snapshot_hash) { await client.query('ROLLBACK'); res.status(409).json({ error: 'Kitchen data changed since preview; request a fresh preview' }); return; }
       const plan = batch.plan as ImportPlan;
       const ids = new Map(state.catalog.map(item => [nameKey(item.name), String(item.ingredient_id)]));
       const ingredients = [], recipes = [];
-      for (const item of plan.ingredients) {
-        const saved = await client.query('INSERT INTO ingredients (restaurant_id, name, purchase_unit, purchase_quantity, purchase_price) VALUES ($1,$2,$3,$4,$5) RETURNING ingredient_id, name', [req.params.restaurantId, item.name, item.purchase_unit, item.purchase_quantity, item.purchase_price]);
-        ids.set(nameKey(item.name), String(saved.rows[0].ingredient_id)); ingredients.push(saved.rows[0]);
+      if (plan.ingredients.length) {
+        const saved = await client.query(`INSERT INTO ingredients (restaurant_id, name, purchase_unit, purchase_quantity, purchase_price)
+          SELECT $1, x.name, x.purchase_unit, x.purchase_quantity, x.purchase_price
+          FROM jsonb_to_recordset($2::jsonb) AS x(name text, purchase_unit text, purchase_quantity numeric, purchase_price numeric)
+          RETURNING ingredient_id, name`, [req.params.restaurantId, JSON.stringify(plan.ingredients)]);
+        for (const item of saved.rows) { ids.set(nameKey(item.name), String(item.ingredient_id)); ingredients.push(item); }
       }
       for (const recipe of plan.recipes) {
         const saved = await client.query('INSERT INTO recipes (restaurant_id, name, instructions, yield_quantity, yield_unit) VALUES ($1,$2,$3,$4,$5) RETURNING recipe_id, name', [req.params.restaurantId, recipe.name, recipe.instructions, recipe.yield_quantity, recipe.yield_unit]);
-        for (const line of recipe.ingredients) {
-          await client.query('INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, original_quantity, original_unit) VALUES ($1,$2,$3,$4,$5,$6)', [saved.rows[0].recipe_id, ids.get(nameKey(line.ingredient_name)), line.quantity, line.unit, line.original_quantity, line.original_unit]);
-        }
+        await client.query(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, original_quantity, original_unit)
+          SELECT $1, x.ingredient_id, x.quantity, x.unit, x.original_quantity, x.original_unit
+          FROM jsonb_to_recordset($2::jsonb) AS x(ingredient_id bigint, quantity numeric, unit text, original_quantity numeric, original_unit text)`,
+          [saved.rows[0].recipe_id, JSON.stringify(recipe.ingredients.map(line => ({ ...line, ingredient_id: ids.get(nameKey(line.ingredient_name)) })))]);
         recipes.push(saved.rows[0]);
       }
       const summary = { imported_ingredients: ingredients.length, imported_recipes: recipes.length, skipped_ingredients: plan.skipped_ingredients, ingredients, recipes, warnings: plan.warnings };

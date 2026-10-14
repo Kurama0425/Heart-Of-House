@@ -34,7 +34,9 @@ test('CSV preview/commit real PostgreSQL: confirmation, isolation, duplicates, r
       const body={ingredients_csv: ingredients_csv.split('\n').slice(0,2).join('\n'),recipes_csv: recipes_csv.split('\n').slice(0,2).join('\n')};
       const preview = await call(root+'/imports/preview','POST',body);
       assert.equal(preview.preview.skipped_ingredients,1);
-      const responses=await Promise.all([0,1].map(() => fetch(url+root+'/imports/'+preview.import_id+'/commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm:true})})));
+      const secondPreview = await call(root+'/imports/preview','POST',body);
+      assert.notEqual(secondPreview.import_id,preview.import_id);
+      const responses=await Promise.all([preview.import_id,secondPreview.import_id].map(importId => fetch(url+root+'/imports/'+importId+'/commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm:true})})));
       assert.deepEqual(responses.map(r=>r.status).sort(),[200,201]);
       assert.equal((await call(root+'/recipes')).recipes.length,1);
       const conflict=await call(root+'/imports/preview','POST',{recipes_csv:body.recipes_csv+'\n'});
@@ -47,6 +49,8 @@ test('CSV preview/commit real PostgreSQL: confirmation, isolation, duplicates, r
       await call(root+'/imports/'+preview.import_id+'/commit','POST',{confirm:true},409);
       assert.equal((await call(root+'/ingredients')).ingredients.length,1);
       const refreshed=await call(root+'/imports/preview','POST',body);
+      assert.notEqual(refreshed.import_id,preview.import_id);
+      await call(root+'/imports/'+preview.import_id+'/commit','POST',{confirm:true},409);
       await db.query("UPDATE import_batches SET expires_at=NOW()-INTERVAL '1 minute' WHERE import_id=$1",[refreshed.import_id]);
       assert.equal((await call(root+'/imports/'+refreshed.import_id)).can_commit,false);
       await call(root+'/imports/'+refreshed.import_id+'/commit','POST',{confirm:true},409);

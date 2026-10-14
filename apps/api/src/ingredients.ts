@@ -1,7 +1,7 @@
 import { attachLifecycle } from "./lifecycle";
 import { validId, normalizeName, validQuantity, validPrice } from "./validation";
 import { Router } from "express";
-import { Database } from "./restaurants";
+import { Database, TransactionClient } from "./restaurants";
 
 export function ingredientRoutes(database: Database) {
   const router = Router({ mergeParams: true });
@@ -48,15 +48,22 @@ export function ingredientRoutes(database: Database) {
         !validQuantity(purchase_quantity) || (price !== null && !validPrice(price))) {
       res.status(400).json({ error: "Name and purchase unit are required; quantity must be positive (up to 4 decimals), price nonnegative (up to 2 decimals), within database limits" }); return;
     }
+    let client: TransactionClient | undefined, committed = false;
     try {
-      const result = await database.query(
+      if (editing && database.connect) {
+        client = await database.connect(); await client.query("BEGIN");
+        await client.query("SELECT ingredient_id FROM ingredients WHERE restaurant_id = $1 AND ingredient_id = $2 FOR UPDATE", [req.params.restaurantId, req.params.ingredientId]);
+      }
+      const connection = client ?? database;
+      const result = await connection.query(
         editing ? "UPDATE ingredients SET name = $2, purchase_unit = $3, purchase_quantity = $4, purchase_price = $5, updated_at = NOW() WHERE restaurant_id = $1 AND ingredient_id = $6 AND (purchase_unit = $3 OR NOT EXISTS (SELECT 1 FROM recipe_ingredients WHERE ingredient_id = $6)) RETURNING *" : "INSERT INTO ingredients (restaurant_id, name, purchase_unit, purchase_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5) RETURNING *",
         editing ? [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price, req.params.ingredientId] : [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price]
       );
       if (!result.rows.length) {
-        const exists = await database.query("SELECT ingredient_id FROM ingredients WHERE restaurant_id = $1 AND ingredient_id = $2", [req.params.restaurantId, req.params.ingredientId]);
+        const exists = await connection.query("SELECT ingredient_id FROM ingredients WHERE restaurant_id = $1 AND ingredient_id = $2", [req.params.restaurantId, req.params.ingredientId]);
         res.status(exists.rows.length ? 409 : 404).json({ error: exists.rows.length ? "Purchase unit cannot change while used in a recipe; update price or quantity instead" : "Ingredient not found" }); return;
       }
+      if (client) { await client.query("COMMIT"); committed = true; }
       res.status(editing ? 200 : 201).json({ ingredient: result.rows[0] });
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -64,7 +71,7 @@ export function ingredientRoutes(database: Database) {
       if (code === "23505") { res.status(409).json({ error: "An ingredient with that name already exists" }); return; }
       console.error("Ingredient creation failed:", error);
       res.status(503).json({ error: "Ingredient service unavailable" });
-    }
+    } finally { if (client) { if (!committed) await client.query("ROLLBACK").catch(() => {}); client.release(); } }
   };
   router.post("/", save(false));
   router.put("/:ingredientId", save(true));

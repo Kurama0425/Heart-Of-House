@@ -16,6 +16,10 @@ export function attachLifecycle(router: Router, database: Database, kind: 'ingre
         await client.query(`SELECT ${idColumn} FROM ${table} WHERE restaurant_id = $1 AND ${idColumn} = $2 FOR UPDATE`, [req.params.restaurantId, id]);
       }
       const connection = client ?? database;
+      if (client && kind === 'recipe' && active) {
+        await client.query(`SELECT i.ingredient_id FROM ingredients i JOIN recipe_ingredients ri USING (ingredient_id)
+          JOIN recipes r USING (recipe_id) WHERE r.restaurant_id = $1 AND r.recipe_id = $2 ORDER BY i.ingredient_id FOR SHARE OF i`, [req.params.restaurantId, id]);
+      }
       // Static table/column choices only; values are bound. Active recipes protect ingredients.
       const guard = kind === 'ingredient' && !active ? ` AND NOT EXISTS (SELECT 1 FROM recipe_ingredients ri JOIN recipes r USING (recipe_id) WHERE ri.ingredient_id = $2 AND r.is_active)` : kind === 'recipe' && active ? ` AND NOT EXISTS (SELECT 1 FROM recipe_ingredients ri JOIN ingredients i USING (ingredient_id) WHERE ri.recipe_id = $2 AND NOT i.is_active)` : '';
       const result = await connection.query(`UPDATE ${table} SET is_active = $3, updated_at = NOW() WHERE restaurant_id = $1 AND ${idColumn} = $2${guard} RETURNING *`, [req.params.restaurantId, id, active]);
