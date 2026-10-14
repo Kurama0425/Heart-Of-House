@@ -33,7 +33,9 @@ completed ingredient/recipe/costing/prep/checklist functionality.
 Locally: 36 API tests and 4 frontend calculation tests passed; both builds passed.
 CI run 38618686952 passed migration/seed repetition, real PostgreSQL workflows,
 unit tests and builds. The first browser run failed on an accessible ingredient
-selector; an explicit label was added and final browser verification is pending. Native database/browser
+selector; an explicit label was added. Final CI run 38619253553 passed all checks
+for implementation commit 94904cddc06e4c71d1d37f9a74fee7a9cb234dcf, including the
+real browser kitchen/ingredient/recipe/prep/checklist save, edit and reload workflow. Native database/browser
 checks could not be executed locally: user switching is unavailable for the
 PostgreSQL service and browser downloads were truncated. CI has a disposable
 PostgreSQL service and browser installer; report its actual outcome separately.
@@ -54,5 +56,8 @@ added main commits 9fb2bbc and 745fce8; these are integrated in PR #5. The PR re
 the shared selection and serialized save guards, which cover the same stale/pending
 issues. The seed never overwrites existing records. Resume it with PR #5 as the integration
 source of truth; do not rebuild these features or change main in overlapping areas
-while the PR is open. The independent reviewer should review this PR and maintain
+while the PR is open. The daily builder and review prompts now reference PR #5 and avoid overlapping
+main writes. The one-time sprint prompt could not be updated because its scheduled
+time was already past; its already-running changes were checked and integrated.
+The independent reviewer should review this PR and maintain
 these unresolved issues in the review backlog.
