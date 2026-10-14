@@ -107,3 +107,24 @@ uniqueness. If it reports a duplicate key, existing names normalize to the same
 value (for example Flour/flour). No automatic merge/deletion happens. Keep the
 database intact and reconcile names deliberately before retrying. Blank purchase
 prices mean unknown; enter 0 only for a truly free ingredient.
+
+## Backend-ready sprint updates
+
+Run all migrations 001–006 before using CSV import. 005 adds preview plans/receipts;
+006 prevents normalized recipe-name duplicates without merging them. A duplicate
+error stops safely; use the read-only diagnostic queries in RECIPE_IMPORT.md and
+reconcile records deliberately before retrying. Do not reset the database.
+
+The importer endpoints and next frontend steps are in FRONTEND_HANDOFF.md and
+API_CONTRACT.md. JSON import requests use CSV file text, not multipart uploads.
+No import UI was added during the backend sprint.
+
+Default browser origins: http://localhost:5173 and http://127.0.0.1:5173. If Vite
+uses a different port, set WEB_ORIGINS in apps/api/.env to the exact browser URL,
+then restart the API. Requests from other browser origins return 403.
+
+Migration locking is built in. Integration tests launch two separate migration
+processes, verify lock waiting, repeatability, legacy measurement backfill, and
+rollback after a deliberately failed test migration. Test data lives in uniquely
+named schemas; tests never reset the configured database. The additional opt-in
+RUN_DB_INTEGRATION suite still requires a disposable database ending in _test.

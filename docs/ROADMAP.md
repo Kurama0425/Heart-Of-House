@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Stabilize the integration PR and prepare recipe import:** build the actual bulk-import review flow on the preserved measurements and unknown-price support. Contact/timezone form fields remain follow-up work; the update API supports them.
+**Frontend CSV upload/preview/confirm:** use the implemented bulk import backend and FRONTEND_HANDOFF.md. Then improve recipe browsing/editing, ingredient pricing, prep, and checklist routines.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 
@@ -69,4 +69,18 @@ of removing useful foundations.
 
 - [x] Dashboard first-run restaurant setup: create a kitchen and unlock Ingredients/Recipes without API commands or refreshing.
 
-- [x] Import preparation: original measurements, normalized ingredient-name uniqueness, optional unknown prices (migration 004). Actual bulk upload/import remains pending.
+- [x] Import preparation: original measurements, normalized ingredient-name uniqueness, optional unknown prices (migration 004). CSV preview/confirm backend is implemented; upload UI remains pending.
+
+## Backend-ready checkpoint
+
+- [x] Immutable ingredient/recipe CSV preview and explicit transactional confirmation
+- [x] Durable idempotent receipts, source conflicts, stale/expired plans and import history
+- [x] Ingredient/recipe lookup, archive/restore, and archived record browsing
+- [x] Partial kitchen profiles, prep task wording edits, checklist template editing
+- [x] Original measurements, unknown prices, normalized names and conversion guards
+- [x] Real PostgreSQL concurrency/rollback/import/core tests and separate-process migration checks
+- [x] Stable local API contract and chef-friendly frontend handoff
+- [ ] Frontend import wizard, archive controls, template editor and pricing improvements
+
+Completion verification for the sprint is tracked in BACKEND_SPRINT_STATUS.md;
+unchecked hosting/security work remains a separate scope, not a claim of production readiness.

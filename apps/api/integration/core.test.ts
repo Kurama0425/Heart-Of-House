@@ -21,9 +21,11 @@ test('core lifecycle, profile partial updates, normalized conflicts, validation 
     await call(root+'/ingredients/'+i.ingredient_id,'DELETE',undefined,409);
     await call(root+'/recipes/'+recipe.recipe_id,'DELETE');
     assert.equal((await call(root+'/recipes')).recipes.length,0);
+    assert.equal((await call(root+'/recipes?include_archived=true')).recipes.length,1);
     assert.equal((await call(root+'/recipes/'+recipe.recipe_id)).recipe.is_active,false);
     await call(root+'/ingredients/'+i.ingredient_id,'DELETE');
     assert.equal((await call(root+'/ingredients')).ingredients.length,0);
+    assert.equal((await call(root+'/ingredients?include_archived=true')).ingredients.length,1);
     await call(root+'/recipes/'+recipe.recipe_id,'PATCH',{is_active:true},409);
     await call(root+'/ingredients/'+i.ingredient_id,'PATCH',{is_active:true});
     await call(root+'/recipes/'+recipe.recipe_id,'PATCH',{is_active:true});

@@ -1,5 +1,9 @@
 # Integration pass — October 14, 2026
 
+Historical PR #5 checkpoint. Current backend/import readiness and remaining work
+are tracked in [BACKEND_SPRINT_STATUS.md](BACKEND_SPRINT_STATUS.md); the unfinished
+items below describe the earlier checkpoint.
+
 ## Repository audit
 
 Reviewed application/API modules, schema and all three migrations, existing tests,

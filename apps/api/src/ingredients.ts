@@ -23,10 +23,12 @@ export function ingredientRoutes(database: Database) {
     } catch { res.status(503).json({ error: "Ingredient service unavailable" }); }
   });
   router.get<{ restaurantId: string }>("/", async (req, res) => {
+    const includeArchived = req.query.include_archived;
+    if (includeArchived !== undefined && includeArchived !== "true" && includeArchived !== "false") { res.status(400).json({ error: "include_archived must be true or false" }); return; }
     try {
       const restaurant = await database.query("SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1", [req.params.restaurantId]);
       if (!restaurant.rows.length) { res.status(404).json({ error: "Restaurant not found" }); return; }
-      const result = await database.query("SELECT * FROM ingredients WHERE restaurant_id = $1 AND is_active ORDER BY name, ingredient_id", [req.params.restaurantId]);
+      const result = await database.query(`SELECT * FROM ingredients WHERE restaurant_id = $1${includeArchived === "true" ? "" : " AND is_active"} ORDER BY name, ingredient_id`, [req.params.restaurantId]);
       res.json({ ingredients: result.rows });
     } catch (error) {
       console.error("Ingredient list failed:", error);

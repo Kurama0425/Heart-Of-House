@@ -50,3 +50,22 @@ test('separate migration processes wait for one lock, preserve legacy data and a
     } finally { await rm(temp,{recursive:true,force:true}); }
   },false);
 });
+test('legacy normalized-name duplicates stop index migrations without merging or deleting records', async () => {
+  for (const kind of ['ingredient','recipe']) {
+    await withDatabase(async db => {
+      const temp=await mkdtemp(path.join(tmpdir(),'hoh-duplicates-'));
+      try {
+        await writeFile(path.join(temp,'001_initial_schema.sql'),await readFile('../../database/migrations/001_initial_schema.sql','utf8'));
+        await runMigrations(db,temp);
+        const r=(await db.query("INSERT INTO restaurants(name) VALUES('Legacy Duplicates') RETURNING restaurant_id")).rows[0];
+        if(kind==='ingredient') await db.query("INSERT INTO ingredients(restaurant_id,name,purchase_unit) VALUES($1,'Flour','lb'),($1,' flour ','lb')",[r.restaurant_id]);
+        else await db.query("INSERT INTO recipes(restaurant_id,name) VALUES($1,'Dough'),($1,' dough ')",[r.restaurant_id]);
+        await assert.rejects(runMigrations(db), (error: any) => error.code==='23505');
+        const table=kind==='ingredient'?'ingredients':'recipes';
+        assert.equal((await db.query(`SELECT count(*) FROM ${table} WHERE restaurant_id=$1`,[r.restaurant_id])).rows[0].count,'2');
+        const failed=kind==='ingredient'?'004_recipe_import_readiness.sql':'006_recipe_name_uniqueness.sql';
+        assert.equal((await db.query('SELECT count(*) FROM schema_migrations WHERE migration_name=$1',[failed])).rows[0].count,'0');
+      } finally {await rm(temp,{recursive:true,force:true});}
+    },false);
+  }
+});

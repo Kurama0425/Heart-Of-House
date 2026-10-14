@@ -24,6 +24,7 @@ test('CSV preview/commit real PostgreSQL: confirmation, isolation, duplicates, r
       assert.equal((await call(root+'/imports/'+preview.import_id+'/commit','POST',{confirm:true})).already_committed,true);
       assert.equal((await call(root+'/imports/preview','POST',{ingredients_csv,recipes_csv})).already_imported,true);
       assert.equal((await call(root+'/imports/'+preview.import_id)).status,'committed');
+      assert.equal((await call(root+'/imports')).imports[0].import_id,preview.import_id);
       const other = await kitchen('Other Import Kitchen');
       await call(other+'/imports/'+preview.import_id,'GET',undefined,404);
       await call(other+'/imports/'+preview.import_id+'/commit','POST',{confirm:true},404);

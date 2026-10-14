@@ -17,7 +17,9 @@ export function recipeRoutes(database: Database) {
       const restaurant = await database.query('SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1', [restaurantId]);
       if (!restaurant.rows.length) { res.status(404).json({ error: 'Restaurant not found' }); return; }
       if (!recipeId) {
-        const result = await database.query('SELECT * FROM recipes WHERE restaurant_id = $1 AND is_active ORDER BY name, recipe_id', [restaurantId]);
+        const includeArchived = req.query.include_archived;
+        if (includeArchived !== undefined && includeArchived !== "true" && includeArchived !== "false") { res.status(400).json({ error: "include_archived must be true or false" }); return; }
+        const result = await database.query(`SELECT * FROM recipes WHERE restaurant_id = $1${includeArchived === "true" ? "" : " AND is_active"} ORDER BY name, recipe_id`, [restaurantId]);
         res.json({ recipes: result.rows }); return;
       }
       const result = await database.query('SELECT * FROM recipes WHERE restaurant_id = $1 AND recipe_id = $2', [restaurantId, recipeId]);

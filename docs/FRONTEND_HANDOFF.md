@@ -34,7 +34,8 @@ URL, and `VITE_API_URL` in the web environment for a different API URL.
 - Disable duplicate saves while pending. Ignore/abort old GET requests when kitchen,
   date, or selection changes. A failed save must not leave a fake success checkbox.
 - Archiving keeps data/history. Archived recipes/ingredients disappear from normal lists;
-  direct detail URLs still retrieve them. Ingredient archive is blocked while an active
+  direct detail URLs still retrieve them. Use `?include_archived=true` on the
+  ingredient/recipe list to build an archive/restore view. Ingredient archive is blocked while an active
   recipe uses it. Restore ingredients before restoring a recipe that uses them.
 - Names remain reserved after archive. Restore/edit the original record instead of
   creating another version with the same normalized name.
@@ -133,6 +134,8 @@ const receipt = await api(`${root}/imports/${result.import_id}/commit`, "POST", 
    warnings. Refresh ingredients and recipes. The first commit returns 201; retries
    return 200 with `already_committed: true`, not extra rows. With duplicate plans,
    the receipt may identify the original successful import plus `requested_import_id`.
+
+GET `${root}/imports` lists the latest 100 plans/receipts for an import-history screen.
 
 Every preview has an immutable ID. Catalog/recipe changes after preview return
 409 and require a new preview. Plans expire after 24 hours. The entire batch saves

@@ -51,6 +51,14 @@ export function importRoutes(database: Database) {
       res.status(code === '40001' ? 409 : 503).json({ error: code === '40001' ? 'Catalog changed during preview; retry' : 'Import service unavailable' });
     } finally { client?.release(); }
   });
+  router.get<{ restaurantId: string }>("/", async (req, res) => {
+    try {
+      const restaurant = await database.query("SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1", [req.params.restaurantId]);
+      if (!restaurant.rows.length) { res.status(404).json({ error: "Restaurant not found" }); return; }
+      const result = await database.query("SELECT import_id, status, created_at, expires_at, committed_at, summary FROM import_batches WHERE restaurant_id = $1 ORDER BY created_at DESC LIMIT 100", [req.params.restaurantId]);
+      res.json({ imports: result.rows });
+    } catch { res.status(503).json({ error: "Import service unavailable" }); }
+  });
   router.get<{ restaurantId: string; importId: string }>('/:importId', async (req, res) => {
     if (!uuid(req.params.importId)) { res.status(400).json({ error: 'Invalid import ID' }); return; }
     try {
