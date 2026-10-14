@@ -97,8 +97,8 @@ Recipe routes remain local-demo only until authentication/authorization.
 ## Current kitchen modules
 
 All data APIs are scoped by restaurant ID (not yet authorized to a logged-in
-user). Current routes include restaurant create/list/detail, ingredient
-create/list, recipe create/list/detail/edit, dated prep lists and task completion,
+user). Current routes include restaurant create/list/detail/edit, ingredient
+create/list/edit, recipe create/list/detail/edit, dated prep lists and task completion,
 and reusable opening/closing checklist templates/runs/task completion.
 
 Recipe lines store both `quantity/unit` in the ingredient's purchase units
@@ -118,8 +118,10 @@ Stubbed HTTP tests cover validation and route behavior. The opt-in PostgreSQL
 integration test runs against a disposable database ending in `_test` and
 checks real recipe SQL, food costs, prep persistence, and checklist persistence.
 GitHub Actions provisions PostgreSQL, runs migrations, tests both apps,
-and builds both apps on pushes and pull requests. Interactive browser
-verification is still separate.
+and builds both apps on pushes and pull requests. CI also verifies Chromium create/edit/save/reload workflows.
+The dashboard owns one active kitchen selection and passes it to each tool;
+shared HTTP error handling lives in request.ts. Ingredient writes refresh recipe
+catalog/detail costs, and kitchen switches reset tool state.
 
 ## Security boundary
 

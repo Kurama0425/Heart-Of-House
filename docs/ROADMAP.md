@@ -22,9 +22,9 @@ table a current product commitment.
 
 ## First usable version — Recipes, costing, and prep
 
-- [ ] Minimal restaurant lookup and profile updates
+- [x] Minimal restaurant lookup and profile updates
   - [x] Lookup by ID with validation and automated HTTP tests
-  - [ ] Profile updates
+  - [x] Validated profile update API; kitchen name editor
 - [x] Ingredient catalog: React form/list, restaurant-scoped create/list API, PostgreSQL persistence and input validation
 - [x] Compatible recipe unit conversions (weight and US volume; normalized to purchase units)
 - [x] Ingredient cost per purchase unit: live form preview and catalog column
@@ -41,9 +41,9 @@ workflow before starting several unrelated modules.
 
 ## Necessary quality and demo work
 
-- [x] Opt-in live PostgreSQL integration test for recipe/costing, prep, and checklists (CI verification pending)
-- [ ] Small demo restaurant with fictional data
-- [x] Local setup instructions and reproducible CI test/build workflow
+- [x] PostgreSQL workflow tests and CI (execution status in INTEGRATION_STATUS.md)
+- [x] Opt-in fictional demo kitchen/ingredients seed; skips existing kitchens
+- [x] Exact local setup, migrations, startup, troubleshooting and CI checks
 - [x] Basic responsive interface
 - [ ] Authentication and restaurant access controls before real operational/contact data is hosted
 - [ ] Simple deployment, backup, and recovery instructions before a real pilot
@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Verify stabilization in CI and trial a small fictional recipe import**, then **Restaurant profile editing:** let a kitchen correct its contact details and timezone without database commands.
+**Stabilize the integration PR and prepare recipe import:** build the actual bulk-import review flow on the preserved measurements and unknown-price support. Contact/timezone form fields remain follow-up work; the update API supports them.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 
@@ -69,14 +69,4 @@ of removing useful foundations.
 
 - [x] Dashboard first-run restaurant setup: create a kitchen and unlock Ingredients/Recipes without API commands or refreshing.
 
-## October stabilization sprint
-
-- [x] Clear stale prep/checklist data during restaurant/date loads.
-- [x] Disable same-task checkbox writes until the prior update completes.
-- [x] Add migration 004 to preserve new recipe input units and support unknown prices.
-- [x] Add case/whitespace-insensitive ingredient uniqueness (migration may require
-  manual reconciliation if legacy duplicates already exist).
-- [x] Add PostgreSQL integration test and GitHub Actions workflow (run status must be checked).
-- [x] Document a preview-first bulk recipe import format.
-- [ ] Implement reviewed CSV import preview and transaction-safe import after a real kitchen sample.
-- [ ] Verify interactive browser workflows on Sean's actual local setup.
+- [x] Import preparation: original measurements, normalized ingredient-name uniqueness, optional unknown prices (migration 004). Actual bulk upload/import remains pending.

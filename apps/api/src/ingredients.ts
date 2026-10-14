@@ -22,7 +22,8 @@ export function ingredientRoutes(database: Database) {
       res.status(503).json({ error: "Ingredient service unavailable" });
     }
   });
-  router.post<{ restaurantId: string }>("/", async (req, res) => {
+  const save = (editing: boolean) => async (req: any, res: any) => {
+    if (editing && (!/^[1-9]\d{0,18}$/.test(req.params.ingredientId) || BigInt(req.params.ingredientId) > 9223372036854775807n)) { res.status(400).json({ error: "Invalid ingredient ID" }); return; }
     const body = req.body;
     const allowed = ["name", "purchase_unit", "purchase_quantity", "purchase_price"];
     if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !allowed.includes(key))) {
@@ -43,10 +44,14 @@ export function ingredientRoutes(database: Database) {
     }
     try {
       const result = await database.query(
-        "INSERT INTO ingredients (restaurant_id, name, purchase_unit, purchase_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price]
+        editing ? "UPDATE ingredients SET name = $2, purchase_unit = $3, purchase_quantity = $4, purchase_price = $5, updated_at = NOW() WHERE restaurant_id = $1 AND ingredient_id = $6 AND (purchase_unit = $3 OR NOT EXISTS (SELECT 1 FROM recipe_ingredients WHERE ingredient_id = $6)) RETURNING *" : "INSERT INTO ingredients (restaurant_id, name, purchase_unit, purchase_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        editing ? [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price, req.params.ingredientId] : [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price]
       );
-      res.status(201).json({ ingredient: result.rows[0] });
+      if (!result.rows.length) {
+        const exists = await database.query("SELECT ingredient_id FROM ingredients WHERE restaurant_id = $1 AND ingredient_id = $2", [req.params.restaurantId, req.params.ingredientId]);
+        res.status(exists.rows.length ? 409 : 404).json({ error: exists.rows.length ? "Purchase unit cannot change while used in a recipe; update price or quantity instead" : "Ingredient not found" }); return;
+      }
+      res.status(editing ? 200 : 201).json({ ingredient: result.rows[0] });
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code === "23503") { res.status(404).json({ error: "Restaurant not found" }); return; }
@@ -54,6 +59,8 @@ export function ingredientRoutes(database: Database) {
       console.error("Ingredient creation failed:", error);
       res.status(503).json({ error: "Ingredient service unavailable" });
     }
-  });
+  };
+  router.post("/", save(false));
+  router.put("/:ingredientId", save(true));
   return router;
 }

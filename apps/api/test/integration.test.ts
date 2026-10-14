@@ -13,7 +13,7 @@ test('real PostgreSQL recipe costing, prep, and checklist workflows', {
   const databaseName = decodeURIComponent(new URL(connectionString).pathname.slice(1));
   assert(databaseName.endsWith('_test'), 'Refusing to run integration tests outside a *_test database');
 
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ connectionString, connectionTimeoutMillis: 10000, query_timeout: 10000 });
   const server = createApp(pool).listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', resolve));
   const address = server.address();
@@ -23,7 +23,7 @@ test('real PostgreSQL recipe costing, prep, and checklist workflows', {
 
   async function send(path: string, method = 'GET', body?: unknown) {
     const response = await fetch(base + path, {
-      method,
+      method, signal: AbortSignal.timeout(10000),
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
@@ -107,8 +107,15 @@ test('real PostgreSQL recipe costing, prep, and checklist workflows', {
     assert.equal(runReload.data.runs[0].tasks[0].is_complete, true);
     assert.equal((await send('/999999/checklists/runs/tasks/' + runTaskId, 'PATCH', { is_complete: false })).status, 404);
   } finally {
-    if (restaurantId) await pool.query('DELETE FROM restaurants WHERE restaurant_id = $1', [restaurantId]);
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-    await pool.end();
+    try {
+      if (restaurantId) {
+        // Remove only this test kitchen’s dependents before RESTRICT references.
+        await pool.query('DELETE FROM recipes WHERE restaurant_id = $1', [restaurantId]);
+        await pool.query('DELETE FROM checklist_runs WHERE restaurant_id = $1', [restaurantId]);
+        await pool.query('DELETE FROM restaurants WHERE restaurant_id = $1', [restaurantId]);
+      }
+    }
+    finally { await pool.end(); }
   }
 });

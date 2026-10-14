@@ -46,7 +46,9 @@ export function restaurantRoutes(database: Database) {
     }
   });
 
-  router.post("/", async (req, res) => {
+  const save = (editing: boolean) => async (req: any, res: any) => {
+    const id = req.params.restaurantId;
+    if (editing && (!/^[1-9]\d{0,18}$/.test(id) || BigInt(id) > 9223372036854775807n)) { res.status(400).json({ error: "Invalid restaurant ID" }); return; }
     const body = req.body;
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       res.status(400).json({ error: "Body must be a JSON object" });
@@ -72,9 +74,9 @@ export function restaurantRoutes(database: Database) {
       res.status(400).json({ error: "Name is required" });
       return;
     }
-    fields.timezone ??= "America/New_York";
+    if (!editing) fields.timezone ??= "America/New_York";
     try {
-      new Intl.DateTimeFormat("en-US", { timeZone: fields.timezone });
+      if (typeof fields.timezone === "string") new Intl.DateTimeFormat("en-US", { timeZone: fields.timezone });
     } catch {
       res.status(400).json({ error: "Invalid timezone" });
       return;
@@ -83,15 +85,18 @@ export function restaurantRoutes(database: Database) {
       const keys = Object.keys(fields);
       const placeholders = keys.map((_, index) => `$${index + 1}`);
       const result = await database.query(
-        `INSERT INTO restaurants (${keys.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
-        keys.map(key => fields[key])
+        editing ? `UPDATE restaurants SET ${keys.map((key, index) => `${key} = $${index + 1}`).join(", ")}, updated_at = NOW() WHERE restaurant_id = $${keys.length + 1} RETURNING *` : `INSERT INTO restaurants (${keys.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
+        editing ? [...keys.map(key => fields[key]), id] : keys.map(key => fields[key])
       );
       const restaurant = result.rows[0];
-      res.status(201).json({ restaurant });
+      if (!restaurant) { res.status(404).json({ error: "Restaurant not found" }); return; }
+      res.status(editing ? 200 : 201).json({ restaurant });
     } catch (error) {
       console.error("Restaurant creation failed:", error);
       res.status(503).json({ error: "Restaurant service unavailable" });
     }
-  });
+  };
+  router.post("/", save(false));
+  router.patch("/:restaurantId", save(true));
   return router;
 }
