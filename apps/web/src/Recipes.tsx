@@ -79,7 +79,7 @@ export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: 
       <label>Instructions <textarea required maxLength={10000} rows={4} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} /></label>
       <p>Use the purchase unit, or compatible g/kg/oz/lb and ml/l/tsp/tbsp/cup/pt/qt/gal units. Volume is US customary. Weight cannot convert to volume. Saved quantities are converted to purchase units and rounded to four decimals.</p>
       {lines.map((line, index) => <div className="recipe-line" key={index}>
-        <label>Ingredient {index + 1} <select required value={line.ingredient_id} onChange={e => updateLine(index, { ingredient_id: e.target.value, unit: ingredients.find(i => i.ingredient_id === e.target.value)?.purchase_unit ?? '' })}>
+        <label>Ingredient {index + 1} <select aria-label={`Ingredient ${index + 1}`} required value={line.ingredient_id} onChange={e => updateLine(index, { ingredient_id: e.target.value, unit: ingredients.find(i => i.ingredient_id === e.target.value)?.purchase_unit ?? '' })}>
           <option value="">Choose ingredient</option>{ingredients.filter(i => i.ingredient_id === line.ingredient_id || !lines.some(l => l.ingredient_id === i.ingredient_id)).map(i => <option key={i.ingredient_id} value={i.ingredient_id}>{i.name}</option>)}
         </select></label>
         <label>Quantity <input required type="number" min="0.0001" max="99999999.9999" step="0.0001" value={line.quantity} onChange={e => updateLine(index, { quantity: e.target.value })} /></label>

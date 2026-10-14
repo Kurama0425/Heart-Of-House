@@ -22,9 +22,9 @@ table a current product commitment.
 
 ## First usable version — Recipes, costing, and prep
 
-- [ ] Minimal restaurant lookup and profile updates
+- [x] Minimal restaurant lookup and profile updates
   - [x] Lookup by ID with validation and automated HTTP tests
-  - [ ] Profile updates
+  - [x] Validated profile update API; kitchen name editor
 - [x] Ingredient catalog: React form/list, restaurant-scoped create/list API, PostgreSQL persistence and input validation
 - [x] Compatible recipe unit conversions (weight and US volume; normalized to purchase units)
 - [x] Ingredient cost per purchase unit: live form preview and catalog column
@@ -41,9 +41,9 @@ workflow before starting several unrelated modules.
 
 ## Necessary quality and demo work
 
-- [ ] Live PostgreSQL integration tests
-- [ ] Small demo restaurant with fictional data
-- [ ] Clear setup instructions and reproducible checks
+- [x] PostgreSQL workflow tests and CI (execution status in INTEGRATION_STATUS.md)
+- [x] Opt-in fictional demo kitchen/ingredients seed; skips existing kitchens
+- [x] Exact local setup, migrations, startup, troubleshooting and CI checks
 - [x] Basic responsive interface
 - [ ] Authentication and restaurant access controls before real operational/contact data is hosted
 - [ ] Simple deployment, backup, and recovery instructions before a real pilot
@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Restaurant profile editing:** let a kitchen correct its contact details and timezone without database commands.
+**Stabilize the integration PR and prepare recipe import:** preserve original measurement units and clarify unknown pricing. Contact/timezone form fields remain follow-up work; the update API supports them.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 

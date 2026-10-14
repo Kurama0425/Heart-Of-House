@@ -40,6 +40,10 @@ The repository currently contains:
 - Initial schema for restaurants, employees, roles, ingredients, recipes, and shifts
 - Project roadmap and architecture notes
 
+## Start here
+
+Follow [the exact Windows/local setup guide](docs/LOCAL_SETUP.md) for database creation, passwords, migrations, optional demo seeding, both terminals, and troubleshooting.
+
 ## Run the API locally
 
 Create `apps/api/.env` from `.env.example` and make sure `DATABASE_URL` points to a PostgreSQL database.
@@ -159,7 +163,7 @@ The list reloads from PostgreSQL when the page is reopened. If none exist, use
 **Set up your kitchen** on the dashboard to create your restaurant. Ingredients
 and Recipes unlock immediately after creation, without a page refresh.
 If setup cannot connect, it shows a retry button and instructions to start the
-API and PostgreSQL; it never creates placeholder or demo data.
+API and PostgreSQL; it never silently creates placeholder data. Optional `npm run db:seed` creates a fictional demo kitchen only in an empty database.
 Run PostgreSQL, configure `apps/api/.env`, run `npm run db:migrate`, and start
 both the API and web dev servers using the setup instructions above.
 
@@ -181,8 +185,7 @@ live PostgreSQL integration verification remains pending.
 
 Open **Recipes**, select the restaurant, and enter a recipe name, instructions,
 batch yield and yield unit. Add ingredients from its catalog, set quantities/units,
-and save. Select a saved recipe to load its details from PostgreSQL. If you added
-new catalog ingredients after opening the page, reload to refresh the selection.
+and save. Select a saved recipe to load its details from PostgreSQL. Catalog changes refresh the recipe ingredient choices and selected recipe costs automatically.
 
 - `POST /api/v1/restaurants/:restaurantId/recipes` creates a recipe and its lines atomically.
 - `GET /api/v1/restaurants/:restaurantId/recipes` lists saved recipes.
@@ -277,3 +280,20 @@ and duplicate template/date/shift runs return 409. Task updates are restaurant-s
 After pulling, run `npm run db:migrate` in `apps/api` to apply
 `003_checklists.sql`. Tests use database stubs; live PostgreSQL and browser interaction
 remain unverified. Authentication is still required before hosting real operational data.
+
+## Integration and verification
+
+The dashboard uses one remembered active kitchen for every tool. The kitchen name
+can be edited with `PATCH /api/v1/restaurants/:restaurantId`. Ingredient purchases
+can be edited using `PUT /api/v1/restaurants/:restaurantId/ingredients/:ingredientId`
+with the same full body as creation. Purchase-unit changes return 409 while an
+ingredient is used in any saved recipe, preventing silent quantity reinterpretation.
+Price changes refresh current recipe costs. Kitchen changes discard unsaved forms.
+
+`npm run test:integration` in apps/api requires `TEST_DATABASE_URL`; it creates an
+isolated test schema and verifies actual PostgreSQL SQL. `npm run test:e2e` in
+apps/web uses Playwright and requires a migrated, seeded local database. It creates
+fictional browser-test records; use a disposable database for that test. CI provides
+PostgreSQL, checks repeat migration/seed runs, runs unit/integration tests and both
+builds, then verifies the browser workflows. Older per-feature test counts above
+are historical; consult the current CI run and `docs/INTEGRATION_STATUS.md`.
