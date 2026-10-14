@@ -28,9 +28,9 @@ export function prepListRoutes(database: Database) {
     }
     try {
       const result = await database.query(
-        `SELECT pl.prep_list_id, pl.prep_date, pl.title,
+        `SELECT pl.prep_list_id, pl.prep_date::text AS prep_date, pl.title,
                 COALESCE(json_agg(json_build_object(
-                  'prep_task_id', pt.prep_task_id,
+                  'prep_task_id', pt.prep_task_id::text,
                   'description', pt.description,
                   'position', pt.position,
                   'is_complete', pt.is_complete,
@@ -68,7 +68,7 @@ export function prepListRoutes(database: Database) {
         `WITH new_list AS (
            INSERT INTO prep_lists (restaurant_id, prep_date, title)
            VALUES ($1, $2, $3)
-           RETURNING prep_list_id, prep_date, title
+           RETURNING prep_list_id, prep_date::text AS prep_date, title
          ), new_tasks AS (
            INSERT INTO prep_tasks (prep_list_id, description, position)
            SELECT new_list.prep_list_id, task.description, (task.position - 1)::integer
@@ -77,7 +77,7 @@ export function prepListRoutes(database: Database) {
          )
          SELECT new_list.prep_list_id, new_list.prep_date, new_list.title,
                 json_agg(json_build_object(
-                  'prep_task_id', new_tasks.prep_task_id,
+                  'prep_task_id', new_tasks.prep_task_id::text,
                   'description', new_tasks.description,
                   'position', new_tasks.position,
                   'is_complete', new_tasks.is_complete,

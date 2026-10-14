@@ -1,3 +1,5 @@
+import { attachLifecycle } from "./lifecycle";
+import { validId, normalizeName, validQuantity, validPrice } from "./validation";
 import { Router } from "express";
 import { Database } from "./restaurants";
 
@@ -11,11 +13,20 @@ export function ingredientRoutes(database: Database) {
     }
     next();
   });
+  attachLifecycle(router, database, "ingredient");
+  router.get<{ restaurantId: string; ingredientId: string }>("/:ingredientId", async (req, res) => {
+    if (!validId(req.params.ingredientId)) { res.status(400).json({ error: "Invalid ingredient ID" }); return; }
+    try {
+      const result = await database.query("SELECT * FROM ingredients WHERE restaurant_id = $1 AND ingredient_id = $2", [req.params.restaurantId, req.params.ingredientId]);
+      if (!result.rows.length) { res.status(404).json({ error: "Ingredient not found" }); return; }
+      res.json({ ingredient: result.rows[0] });
+    } catch { res.status(503).json({ error: "Ingredient service unavailable" }); }
+  });
   router.get<{ restaurantId: string }>("/", async (req, res) => {
     try {
       const restaurant = await database.query("SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1", [req.params.restaurantId]);
       if (!restaurant.rows.length) { res.status(404).json({ error: "Restaurant not found" }); return; }
-      const result = await database.query("SELECT * FROM ingredients WHERE restaurant_id = $1 ORDER BY name, ingredient_id", [req.params.restaurantId]);
+      const result = await database.query("SELECT * FROM ingredients WHERE restaurant_id = $1 AND is_active ORDER BY name, ingredient_id", [req.params.restaurantId]);
       res.json({ ingredients: result.rows });
     } catch (error) {
       console.error("Ingredient list failed:", error);
@@ -30,16 +41,11 @@ export function ingredientRoutes(database: Database) {
       res.status(400).json({ error: "Provide only name, purchase_unit, purchase_quantity, and purchase_price" }); return;
     }
     const { name, purchase_unit, purchase_quantity, purchase_price } = body;
-    const normalizedName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
+    const normalizedName = typeof name === "string" ? normalizeName(name) : "";
     const price = purchase_price == null ? null : purchase_price;
-    // Match PostgreSQL NUMERIC precision; reject values that would silently round.
-    const decimal = (value: unknown, places: number, max: number, positive: boolean) =>
-      typeof value === "number" && Number.isFinite(value) && value < max &&
-      (positive ? value > 0 : value >= 0) && /^\d+(?:\.\d+)?$/.test(String(value)) &&
-      (String(value).split(".")[1]?.length ?? 0) <= places;
     if (!normalizedName || [...normalizedName].length > 150 ||
         typeof purchase_unit !== "string" || !purchase_unit.trim() || [...purchase_unit.trim()].length > 50 ||
-        !decimal(purchase_quantity, 4, 100000000, true) || (price !== null && !decimal(price, 2, 10000000000, false))) {
+        !validQuantity(purchase_quantity) || (price !== null && !validPrice(price))) {
       res.status(400).json({ error: "Name and purchase unit are required; quantity must be positive (up to 4 decimals), price nonnegative (up to 2 decimals), within database limits" }); return;
     }
     try {

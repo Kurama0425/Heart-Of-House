@@ -1,3 +1,4 @@
+import { importRoutes } from "./imports";
 import { recipeRoutes } from "./recipes";
 import cors from "cors";
 import { ingredientRoutes } from "./ingredients";
@@ -10,6 +11,7 @@ export function createApp(database: Database) {
   const app = express();
 
   app.use(cors());
+  app.use("/api/v1/restaurants/:restaurantId/imports", express.json({ limit: "2mb" }), importRoutes(database));
   app.use(express.json({ limit: "256kb" }));
 
   app.get("/health", async (_req, res) => {

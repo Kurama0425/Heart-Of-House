@@ -1,6 +1,11 @@
 import { Router } from "express";
 
+export interface TransactionClient {
+  query(sql: string, values?: unknown[]): Promise<{ rows: any[] }>;
+  release(): void;
+}
 export interface Database {
+  connect?(): Promise<TransactionClient>;
   query(sql: string, values?: unknown[]): Promise<{ rows: any[] }>;
 }
 
@@ -70,7 +75,7 @@ export function restaurantRoutes(database: Database) {
         return;
       }
     }
-    if (!fields.name) {
+    if ((!editing && !fields.name) || (Object.hasOwn(fields, "name") && !fields.name) || !Object.keys(fields).length) {
       res.status(400).json({ error: "Name is required" });
       return;
     }

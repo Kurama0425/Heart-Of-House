@@ -71,8 +71,8 @@ export function checklistRoutes(database: Database) {
     if (!validDate(req.query.date)) { res.status(400).json({ error: "date must be a real calendar date in YYYY-MM-DD format" }); return; }
     try {
       const result = await database.query(
-        `SELECT cr.checklist_run_id, cr.run_date, cr.shift_label, cr.template_name, cr.checklist_type,
-                COALESCE(json_agg(json_build_object('checklist_run_task_id', crt.checklist_run_task_id,
+        `SELECT cr.checklist_run_id, cr.run_date::text AS run_date, cr.shift_label, cr.template_name, cr.checklist_type,
+                COALESCE(json_agg(json_build_object('checklist_run_task_id', crt.checklist_run_task_id::text,
                   'description', crt.description, 'position', crt.position, 'is_complete', crt.is_complete)
                   ORDER BY crt.position) FILTER (WHERE crt.checklist_run_task_id IS NOT NULL), '[]') AS tasks
          FROM checklist_runs cr LEFT JOIN checklist_run_tasks crt USING (checklist_run_id)
@@ -97,14 +97,14 @@ export function checklistRoutes(database: Database) {
            INSERT INTO checklist_runs (restaurant_id, checklist_template_id, run_date, shift_label, template_name, checklist_type)
            SELECT $1, ct.checklist_template_id, $3, $4, ct.name, ct.checklist_type
            FROM checklist_templates ct WHERE ct.restaurant_id = $1 AND ct.checklist_template_id = $2
-           RETURNING checklist_run_id, run_date, shift_label, template_name, checklist_type
+           RETURNING checklist_run_id, run_date::text AS run_date, shift_label, template_name, checklist_type
          ), tasks AS (
            INSERT INTO checklist_run_tasks (checklist_run_id, description, position)
            SELECT run.checklist_run_id, ctt.description, ctt.position FROM run
            JOIN checklist_template_tasks ctt ON ctt.checklist_template_id = $2
            RETURNING checklist_run_id, checklist_run_task_id, description, position, is_complete
          )
-         SELECT run.*, json_agg(json_build_object('checklist_run_task_id', tasks.checklist_run_task_id,
+         SELECT run.*, json_agg(json_build_object('checklist_run_task_id', tasks.checklist_run_task_id::text,
            'description', tasks.description, 'position', tasks.position, 'is_complete', tasks.is_complete) ORDER BY tasks.position) AS tasks
          FROM run JOIN tasks USING (checklist_run_id) GROUP BY run.checklist_run_id, run.run_date, run.shift_label, run.template_name, run.checklist_type`,
         [req.params.restaurantId, body.template_id, body.date, body.shift_label.trim()]

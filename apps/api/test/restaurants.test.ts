@@ -69,7 +69,7 @@ test('database failures return a generic error for both endpoints', async () => 
 
 test('malformed JSON and oversized bodies return JSON errors without database access', async () => {
   await withApi({ async query() { assert.fail('Bad body reached database'); } }, async url => {
-    for (const [body, status] of [['{', 400], [JSON.stringify({ name: 'x'.repeat(110000) }), 413]] as const) {
+    for (const [body, status] of [['{', 400], [JSON.stringify({ name: 'x'.repeat(300000) }), 413]] as const) {
       const response = await fetch(url + '/api/v1/restaurants', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body
       });
