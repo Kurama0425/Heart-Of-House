@@ -62,7 +62,7 @@ Case/whitespace-normalized ingredient names are unique within each kitchen.
 After pulling updates, stop the API, run `npm ci` and `npm run db:migrate` in
 apps/api, then restart it and the frontend. Migrations 001–004 are tracked and run
 transactionally in order. Do not rerun `database/schema.sql`; it is a historical
-reference. Run only one migration process at a time.
+reference. Migration runners use a PostgreSQL advisory lock to serialize concurrent processes; each migration remains transactional.
 
 Migration 004 preserves original recipe measurements and allows unknown prices.
 It backfills legacy measurements from stored purchase-unit amounts; previously
@@ -108,7 +108,7 @@ See [the integration status](docs/INTEGRATION_STATUS.md) for actual results and 
 
 ## Remaining scope
 
-Actual bulk upload/import, hosted authentication/authorization, migration locking,
+Actual bulk upload/import, hosted authentication/authorization, migration concurrency regression tests,
 backup/recovery, broader browser failure/race tests, and contact/timezone editor
 fields remain follow-up work. Keep the application local until hosting safeguards
 are implemented. Restaurant-scoped SQL is not user authorization.
