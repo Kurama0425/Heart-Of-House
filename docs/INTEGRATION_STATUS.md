@@ -69,5 +69,10 @@ migration, original measurement persistence, normalized ingredient uniqueness, n
 prices, loopback API binding, additional real-database suite and import documentation.
 Retained the shared kitchen selection, ingredient editor and browser checks. Local
 combined checks: 37 API tests passed, one opt-in database test skipped; both builds
-passed. New combined CI verification is pending. Migration 004 intentionally fails
+passed. Final combined CI run 38620326532 passed for implementation commit b5a9d65:
+all four migrations and repeats, repeat seeds, 38 API tests (including the
+import-readiness database suite), the separate isolated PostgreSQL workflow suite,
+four frontend tests, both builds, and the complete Chromium persistence workflow.
+The inherited database test cleanup was fixed to delete only its test recipe/run
+dependents before the test kitchen, and to always close resources. Migration 004 intentionally fails
 if legacy normalized-name duplicates exist, rather than merging data destructively.
