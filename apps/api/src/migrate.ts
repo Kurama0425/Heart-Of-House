@@ -33,39 +33,39 @@ async function runMigrations(): Promise<void> {
     await lockClient.query("SELECT pg_advisory_lock(72425, 1)");
     await ensureMigrationsTable();
 
-  const appliedMigrations = await getAppliedMigrations();
-  const migrationFiles = (await readdir(migrationsDirectory))
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
+    const appliedMigrations = await getAppliedMigrations();
+    const migrationFiles = (await readdir(migrationsDirectory))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
 
-  for (const migrationName of migrationFiles) {
-    if (appliedMigrations.has(migrationName)) {
-      console.log(`Skipping ${migrationName} (already applied)`);
-      continue;
+    for (const migrationName of migrationFiles) {
+      if (appliedMigrations.has(migrationName)) {
+        console.log(`Skipping ${migrationName} (already applied)`);
+        continue;
+      }
+
+      const migrationPath = path.join(migrationsDirectory, migrationName);
+      const sql = await readFile(migrationPath, "utf8");
+
+      const client = await db.connect();
+
+      try {
+        await client.query("BEGIN");
+        await client.query(sql);
+        await client.query(
+          "INSERT INTO schema_migrations (migration_name) VALUES ($1)",
+          [migrationName]
+        );
+        await client.query("COMMIT");
+
+        console.log(`Applied ${migrationName}`);
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
     }
-
-    const migrationPath = path.join(migrationsDirectory, migrationName);
-    const sql = await readFile(migrationPath, "utf8");
-
-    const client = await db.connect();
-
-    try {
-      await client.query("BEGIN");
-      await client.query(sql);
-      await client.query(
-        "INSERT INTO schema_migrations (migration_name) VALUES ($1)",
-        [migrationName]
-      );
-      await client.query("COMMIT");
-
-      console.log(`Applied ${migrationName}`);
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
   } finally {
     try {
       await lockClient.query("SELECT pg_advisory_unlock(72425, 1)");
