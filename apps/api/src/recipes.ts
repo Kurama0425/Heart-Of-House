@@ -13,20 +13,23 @@ export function recipeRoutes(database: Database) {
   router.get<{ restaurantId: string; recipeId?: string }>('/:recipeId?', async (req, res) => {
     const { restaurantId, recipeId } = req.params;
     if (recipeId !== undefined && !idValid(recipeId)) { res.status(400).json({ error: 'Invalid recipe ID' }); return; }
+    let client: TransactionClient | undefined;
     try {
-      const restaurant = await database.query('SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1', [restaurantId]);
+      if (recipeId && database.connect) { client = await database.connect(); await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"); }
+      const connection = client ?? database;
+      const restaurant = await connection.query('SELECT restaurant_id FROM restaurants WHERE restaurant_id = $1', [restaurantId]);
       if (!restaurant.rows.length) { res.status(404).json({ error: 'Restaurant not found' }); return; }
       if (!recipeId) {
         const includeArchived = req.query.include_archived;
         if (includeArchived !== undefined && includeArchived !== "true" && includeArchived !== "false") { res.status(400).json({ error: "include_archived must be true or false" }); return; }
-        const result = await database.query(`SELECT * FROM recipes WHERE restaurant_id = $1${includeArchived === "true" ? "" : " AND is_active"} ORDER BY name, recipe_id`, [restaurantId]);
+        const result = await connection.query(`SELECT * FROM recipes WHERE restaurant_id = $1${includeArchived === "true" ? "" : " AND is_active"} ORDER BY name, recipe_id`, [restaurantId]);
         res.json({ recipes: result.rows }); return;
       }
-      const result = await database.query('SELECT * FROM recipes WHERE restaurant_id = $1 AND recipe_id = $2', [restaurantId, recipeId]);
+      const result = await connection.query('SELECT * FROM recipes WHERE restaurant_id = $1 AND recipe_id = $2', [restaurantId, recipeId]);
       if (!result.rows.length) { res.status(404).json({ error: 'Recipe not found' }); return; }
       // NUMERIC arithmetic stays in PostgreSQL; round only for display in React.
       // An incompatible legacy line makes the whole estimate unavailable.
-      const items = await database.query(`WITH costs AS (
+      const items = await connection.query(`WITH costs AS (
         SELECT ri.*, i.name, i.purchase_price, i.purchase_quantity,
           CASE WHEN lower(trim(ri.unit)) = lower(trim(i.purchase_unit)) AND i.purchase_quantity > 0
             AND i.restaurant_id = r.restaurant_id
@@ -44,6 +47,7 @@ export function recipeRoutes(database: Database) {
       res.json({ recipe: { ...result.rows[0], ingredients: items.rows,
         costing: { batch_cost: first?.batch_cost ?? null, portion_cost: first?.portion_cost ?? null } } });
     } catch { res.status(503).json({ error: 'Recipe service unavailable' }); }
+    finally { if (client) { await client.query("ROLLBACK").catch(() => {}); client.release(); } }
   });
   async function saveRecipe(req: Request, res: Response, recipeId?: string) {
     const body = req.body;
