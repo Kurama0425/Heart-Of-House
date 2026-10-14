@@ -44,6 +44,8 @@ const apiUrl =
   import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
 function App() {
+  const [restaurantId, setRestaurantId] = useState("");
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const [restaurantRevision, setRestaurantRevision] = useState(0);
   const [health, setHealth] = useState<HealthState>("checking");
 
@@ -91,7 +93,7 @@ function App() {
         </div>
 
         <nav className="primary-nav" aria-label="Primary navigation">
-          <a className="nav-link active" href="#dashboard">
+          <a className="nav-link" href="#dashboard">
             Dashboard
           </a>
           <a className="nav-link" href="#ingredients">
@@ -106,9 +108,7 @@ function App() {
           <a className="nav-link" href="#checklists">
             Checklists
           </a>
-          <a className="nav-link" href="#staff">
-            Staff
-          </a>
+
         </nav>
 
         <div className="sidebar-note">
@@ -167,7 +167,7 @@ function App() {
             {modules.map((module, index) => (
               <article
                 className="module-card"
-                id={["Ingredients", "Recipes"].includes(module.title) ? `${module.title.toLowerCase()}-overview` : module.title.toLowerCase()}
+                id={`${module.title.toLowerCase()}-overview`}
                 key={module.title}
               >
                 <div className="module-number">
@@ -184,30 +184,14 @@ function App() {
           </div>
         </section>
 
-        <RestaurantSetup apiUrl={apiUrl} onCreated={() => setRestaurantRevision(current => current + 1)} />
-        <Ingredients key={`ingredients-${restaurantRevision}`} apiUrl={apiUrl} />
-        <Recipes key={`recipes-${restaurantRevision}`} apiUrl={apiUrl} />
-        <PrepLists key={`prep-${restaurantRevision}`} apiUrl={apiUrl} />
-        <Checklists key={`checklists-${restaurantRevision}`} apiUrl={apiUrl} />
+        <RestaurantSetup apiUrl={apiUrl} onSelected={setRestaurantId} onCreated={() => setRestaurantRevision(current => current + 1)} />
+        {restaurantId && <div key={restaurantId}>
+          <Ingredients apiUrl={apiUrl} restaurantId={restaurantId} onSaved={() => setCatalogRevision(current => current + 1)} />
+          <Recipes apiUrl={apiUrl} restaurantId={restaurantId} catalogRevision={catalogRevision} />
+          <PrepLists apiUrl={apiUrl} restaurantId={restaurantId} />
+          <Checklists apiUrl={apiUrl} restaurantId={restaurantId} />
+        </div>}
 
-        <section className="today-panel">
-          <div>
-            <p className="eyebrow">Development status</p>
-            <h2>The foundation is connected.</h2>
-            <p>
-              The API, PostgreSQL connection, migrations, restaurant records,
-              and HTTP tests are in place. The web interface now has somewhere
-              real to grow.
-            </p>
-          </div>
-
-          <div className="progress-list" aria-label="Project progress">
-            <span className="complete">Database foundation</span>
-            <span className="complete">Restaurant API</span>
-            <span className="complete">Dashboard shell</span>
-            <span className="complete">Ingredient catalog</span>
-          </div>
-        </section>
       </main>
     </div>
   );

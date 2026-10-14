@@ -1,17 +1,11 @@
+import { request } from "./request";
 import { formatCost } from './recipeCost';
 import { FormEvent, useEffect, useState } from 'react';
-type Restaurant = { restaurant_id: string; name: string };
 type Ingredient = { ingredient_id: string; name: string; purchase_unit: string };
 type Line = { ingredient_id: string; quantity: string; unit: string; name?: string; line_cost?: string | null };
 type Recipe = { recipe_id: string; name: string; instructions: string; yield_quantity: string; yield_unit: string; ingredients?: Line[]; costing?: { batch_cost: string | null; portion_cost: string | null } };
-async function request(url: string, options?: RequestInit) {
-  const response = await fetch(url, options); const data = await response.json();
-  if (!response.ok) throw new Error(data.error ?? 'Request failed');
-  return data;
-}
-export function Recipes({ apiUrl }: { apiUrl: string }) {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [restaurantId, setRestaurantId] = useState('');
+
+export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: { apiUrl: string; restaurantId: string; catalogRevision?: number; onSaved?: () => void }) {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [detail, setDetail] = useState<Recipe | null>(null);
@@ -22,12 +16,6 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
   const [editingId, setEditingId] = useState('');
   const base = `${apiUrl}/api/v1/restaurants/${restaurantId}`;
   useEffect(() => {
-    let active = true;
-    request(`${apiUrl}/api/v1/restaurants`).then(data => { if (active) { setRestaurants(data.restaurants); setRestaurantId(data.restaurants[0]?.restaurant_id ?? ''); } })
-      .catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [apiUrl]);
-  useEffect(() => {
     if (!restaurantId) return;
     let active = true;
     setLoading(true); setError(''); setNotice(''); setDetail(null); setLines([]); setRecipes([]); setIngredients([]);
@@ -37,6 +25,14 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
     }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [base, restaurantId]);
+  useEffect(() => {
+    if (!catalogRevision) return;
+    const controller = new AbortController();
+    request(`${base}/ingredients`, { signal: controller.signal }).then(data => {
+      if (!controller.signal.aborted) setIngredients(data.ingredients);
+    }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
+    return () => controller.abort();
+  }, [base, catalogRevision]);
   function updateLine(index: number, patch: Partial<Line>) { setLines(current => current.map((line, i) => i === index ? { ...line, ...patch } : line)); }
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(''); setNotice('');
@@ -45,12 +41,13 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
       setRecipes(current => (editingId ? current.map(r => r.recipe_id === editingId ? data.recipe : r) : [...current, data.recipe]).sort((a,b) => a.name.localeCompare(b.name)));
       const savedId = data.recipe.recipe_id; const wasEditing = !!editingId;
       setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' }); setLines([]); setEditingId(''); setNotice(wasEditing ? 'Recipe updated and food cost recalculated.' : 'Recipe saved. Select it below to see its details.');
-      if (wasEditing) { setSelectedId(''); setTimeout(() => setSelectedId(savedId), 0); }
+      setSelectedId(savedId); setDetailRevision(current => current + 1);
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save recipe'); }
     finally { setSaving(false); }
   }
   // Abort old detail requests when selection, restaurant, or component changes.
   const [selectedId, setSelectedId] = useState('');
+  const [detailRevision, setDetailRevision] = useState(0);
   useEffect(() => {
     setDetail(null);
     if (!selectedId) return;
@@ -58,7 +55,7 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
     request(`${base}/recipes/${selectedId}`, { signal: controller.signal }).then(data => { if (!controller.signal.aborted) setDetail(data.recipe); })
       .catch(e => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
-  }, [base, selectedId]);
+  }, [base, selectedId, detailRevision, catalogRevision]);
   function beginEdit() {
     if (!detail?.ingredients) return;
     setForm({ name: detail.name, instructions: detail.instructions, yield_quantity: detail.yield_quantity, yield_unit: detail.yield_unit });
@@ -70,13 +67,10 @@ export function Recipes({ apiUrl }: { apiUrl: string }) {
   return <section id="recipes" className="ingredient-panel" aria-labelledby="recipe-heading">
     <p className="eyebrow">Standardize the kitchen</p><h2 id="recipe-heading">Recipe Builder</h2>
     <p>Save a batch recipe with its yield and ingredient quantities.</p>
-    <label>Restaurant <select disabled={loading || saving} value={restaurantId} onChange={e => { setSelectedId(''); setRestaurantId(e.target.value); }}>
-      {!restaurants.length && <option value="">Set up your kitchen first</option>}{restaurants.map(r => <option key={r.restaurant_id} value={r.restaurant_id}>{r.name}</option>)}
-    </select></label>
+
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
-    {!loading && !error && !restaurants.length && <p><a href="#restaurant-setup">Set up your kitchen above</a> to create recipes.</p>}
     {loading && <p role="status">Loading recipes…</p>}
-    {!loading && restaurantId && !ingredients.length && <p>Add ingredients in the catalog, then reload this page to start a recipe.</p>}
+    {!loading && restaurantId && !ingredients.length && <p>Add ingredients in the catalog, then return here to start a recipe.</p>}
     <form id="recipe-form" onSubmit={save} className="ingredient-form"><fieldset disabled={loading || saving || !ingredients.length}>
       <legend>{editingId ? 'Edit recipe' : 'New recipe'}</legend>
       <label>Recipe name <input required maxLength={150} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>

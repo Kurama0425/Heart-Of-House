@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "db:migrate": "tsx src/migrate.ts",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "db:seed": "tsx src/seed.ts",
+    "test:integration": "node --import tsx --test integration/*.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

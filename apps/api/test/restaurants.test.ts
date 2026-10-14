@@ -130,3 +130,20 @@ test('lookup database failures do not expose connection details', async () => {
     assert.deepEqual(await response.json(), { error: 'Restaurant service unavailable' });
   });
 });
+
+test('updates restaurant fields without resetting timezone', async () => {
+  await withApi({ async query(sql, values) {
+    assert(sql.startsWith('UPDATE restaurants')); assert.deepEqual(values, ['New Kitchen', '2']);
+    assert(!sql.includes('timezone =')); return { rows: [{ restaurant_id: '2', name: 'New Kitchen' }] };
+  } }, async url => {
+    const response = await fetch(`${url}/api/v1/restaurants/2`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: ' New Kitchen ' }) });
+    assert.equal(response.status, 200); assert.equal((await response.json()).restaurant.name, 'New Kitchen');
+  });
+});
+test('rejects invalid restaurant edit IDs and returns missing restaurant', async () => {
+  await withApi({ async query() { return { rows: [] }; } }, async url => {
+    for (const [id, status] of [['0', 400], ['3', 404]] as const) {
+      const response = await fetch(`${url}/api/v1/restaurants/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Kitchen' }) }); assert.equal(response.status, status);
+    }
+  });
+});

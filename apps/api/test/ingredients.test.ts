@@ -55,3 +55,12 @@ test('missing restaurants and duplicates have clear responses', async () => {
     assert.equal((await fetch(url + '/api/v1/restaurants/123/ingredients')).status, 404);
   });
 });
+
+test('updates ingredient purchases with restaurant scoping and unit protection', async () => {
+  await withApi({ async query(sql, values) {
+    assert(sql.startsWith('UPDATE ingredients')); assert(sql.includes('NOT EXISTS')); assert.deepEqual(values, ['1', 'Flour', 'lb', 25, 20, '2']);
+    return { rows: [{ ingredient_id: '2', purchase_price: '20.00' }] };
+  } }, async url => {
+    const response = await fetch(`${url}/api/v1/restaurants/1/ingredients/2`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Flour', purchase_unit: 'lb', purchase_quantity: 25, purchase_price: 20 }) }); assert.equal(response.status, 200);
+  });
+});
