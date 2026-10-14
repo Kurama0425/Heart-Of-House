@@ -26,7 +26,12 @@ async function getAppliedMigrations(): Promise<Set<string>> {
 }
 
 async function runMigrations(): Promise<void> {
-  await ensureMigrationsTable();
+  // Hold one dedicated connection for the entire migration sequence.
+  // Session-level advisory locks serialize separate deployment processes.
+  const lockClient = await db.connect();
+  try {
+    await lockClient.query("SELECT pg_advisory_lock(72425, 1)");
+    await ensureMigrationsTable();
 
   const appliedMigrations = await getAppliedMigrations();
   const migrationFiles = (await readdir(migrationsDirectory))
@@ -59,6 +64,13 @@ async function runMigrations(): Promise<void> {
       throw error;
     } finally {
       client.release();
+    }
+  }
+  } finally {
+    try {
+      await lockClient.query("SELECT pg_advisory_unlock(72425, 1)");
+    } finally {
+      lockClient.release();
     }
   }
 }
