@@ -9,4 +9,4 @@
 | DEFERRED | No authentication or restaurant authorization | Required before hosted operational data |
 | FIXED | Recipe input measurements lost after normalization | Integrated f9731bd original measurement fields; verified in CI run 38620326532 |
 | FIXED | Case-sensitive ingredient duplicates and unknown-price semantics | Integrated nullable prices and normalized uniqueness; legacy duplicates stop migration for manual reconciliation |
-| OPEN | Concurrent migration processes can race | Run one migration process until locking is added |
+| FIXED (pending CI) | Concurrent migration processes can race | Advisory lock now covers migration bookkeeping and execution on one PostgreSQL connection; verify with two concurrent migration runners against a disposable database |
