@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Database } from "./restaurants";
+import { Database, TransactionClient } from "./restaurants";
 
 const validId = (value: unknown) => typeof value === "string" && /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
 const validDate = (value: unknown) => {
@@ -16,17 +16,21 @@ export function checklistRoutes(database: Database) {
     next();
   });
 
-  router.get<{ restaurantId: string }>("/templates", async (req, res) => {
+  router.get<{ restaurantId: string; templateId?: string }>("/templates/:templateId?", async (req, res) => {
+    if (req.params.templateId !== undefined && !validId(req.params.templateId)) { res.status(400).json({ error: "Invalid template ID" }); return; }
     try {
       const result = await database.query(
         `SELECT ct.checklist_template_id, ct.name, ct.checklist_type,
                 COALESCE(json_agg(json_build_object('description', ctt.description, 'position', ctt.position)
                   ORDER BY ctt.position) FILTER (WHERE ctt.checklist_template_task_id IS NOT NULL), '[]') AS tasks
          FROM checklist_templates ct LEFT JOIN checklist_template_tasks ctt USING (checklist_template_id)
-         WHERE ct.restaurant_id = $1 GROUP BY ct.checklist_template_id ORDER BY ct.checklist_type, ct.name`,
-        [req.params.restaurantId]
+         WHERE ct.restaurant_id = $1 AND ($2::bigint IS NULL OR ct.checklist_template_id = $2) GROUP BY ct.checklist_template_id ORDER BY ct.checklist_type, ct.name`,
+        [req.params.restaurantId, req.params.templateId ?? null]
       );
-      res.json({ templates: result.rows });
+      if (req.params.templateId) {
+        if (!result.rows.length) { res.status(404).json({ error: "Checklist template not found" }); return; }
+        res.json({ template: result.rows[0] });
+      } else res.json({ templates: result.rows });
     } catch (error) {
       console.error("Checklist template lookup failed:", error);
       res.status(503).json({ error: "Checklist service unavailable" });
@@ -67,12 +71,34 @@ export function checklistRoutes(database: Database) {
     }
   });
 
+  router.put<{ restaurantId: string; templateId: string }>("/templates/:templateId", async (req, res) => {
+    const body = req.body;
+    if (!validId(req.params.templateId) || !body || Array.isArray(body) || typeof body !== "object" || Object.keys(body).some(k => !["name", "checklist_type", "tasks"].includes(k)) ||
+      !text(body.name, 150) || !["opening", "closing"].includes(body.checklist_type) || !Array.isArray(body.tasks) || !body.tasks.length || body.tasks.length > 50 || body.tasks.some((task: unknown) => !text(task, 300))) {
+      res.status(400).json({ error: "Provide a valid template ID, name, opening/closing type and 1–50 tasks" }); return;
+    }
+    let client: TransactionClient | undefined, committed = false;
+    try {
+      if (!database.connect) throw new Error("Transaction connection required");
+      client = await database.connect(); await client.query("BEGIN");
+      const target = await client.query("SELECT checklist_template_id FROM checklist_templates WHERE restaurant_id = $1 AND checklist_template_id = $2 FOR UPDATE", [req.params.restaurantId, req.params.templateId]);
+      if (!target.rows.length) { res.status(404).json({ error: "Checklist template not found" }); return; }
+      const updated = await client.query("UPDATE checklist_templates SET name = $3, checklist_type = $4 WHERE restaurant_id = $1 AND checklist_template_id = $2 RETURNING checklist_template_id, name, checklist_type", [req.params.restaurantId, req.params.templateId, body.name.trim(), body.checklist_type]);
+      await client.query("DELETE FROM checklist_template_tasks WHERE checklist_template_id = $1", [req.params.templateId]);
+      const tasks = await client.query(`INSERT INTO checklist_template_tasks (checklist_template_id, description, position)
+        SELECT $1, t.description, (t.position - 1)::integer FROM unnest($2::text[]) WITH ORDINALITY AS t(description, position) RETURNING description, position`, [req.params.templateId, body.tasks.map((task: string) => task.trim())]);
+      await client.query("COMMIT"); committed = true;
+      res.json({ template: { ...updated.rows[0], tasks: tasks.rows } });
+    } catch (error) { res.status((error as {code?:string}).code === "23505" ? 409 : 503).json({ error: (error as {code?:string}).code === "23505" ? "A template with that name already exists" : "Checklist service unavailable" }); }
+    finally { if (client) { if (!committed) await client.query("ROLLBACK").catch(() => {}); client.release(); } }
+  });
+
   router.get<{ restaurantId: string }>("/runs", async (req, res) => {
     if (!validDate(req.query.date)) { res.status(400).json({ error: "date must be a real calendar date in YYYY-MM-DD format" }); return; }
     try {
       const result = await database.query(
-        `SELECT cr.checklist_run_id, cr.run_date, cr.shift_label, cr.template_name, cr.checklist_type,
-                COALESCE(json_agg(json_build_object('checklist_run_task_id', crt.checklist_run_task_id,
+        `SELECT cr.checklist_run_id, cr.run_date::text AS run_date, cr.shift_label, cr.template_name, cr.checklist_type,
+                COALESCE(json_agg(json_build_object('checklist_run_task_id', crt.checklist_run_task_id::text,
                   'description', crt.description, 'position', crt.position, 'is_complete', crt.is_complete)
                   ORDER BY crt.position) FILTER (WHERE crt.checklist_run_task_id IS NOT NULL), '[]') AS tasks
          FROM checklist_runs cr LEFT JOIN checklist_run_tasks crt USING (checklist_run_id)
@@ -97,14 +123,14 @@ export function checklistRoutes(database: Database) {
            INSERT INTO checklist_runs (restaurant_id, checklist_template_id, run_date, shift_label, template_name, checklist_type)
            SELECT $1, ct.checklist_template_id, $3, $4, ct.name, ct.checklist_type
            FROM checklist_templates ct WHERE ct.restaurant_id = $1 AND ct.checklist_template_id = $2
-           RETURNING checklist_run_id, run_date, shift_label, template_name, checklist_type
+           RETURNING checklist_run_id, run_date::text AS run_date, shift_label, template_name, checklist_type
          ), tasks AS (
            INSERT INTO checklist_run_tasks (checklist_run_id, description, position)
            SELECT run.checklist_run_id, ctt.description, ctt.position FROM run
            JOIN checklist_template_tasks ctt ON ctt.checklist_template_id = $2
            RETURNING checklist_run_id, checklist_run_task_id, description, position, is_complete
          )
-         SELECT run.*, json_agg(json_build_object('checklist_run_task_id', tasks.checklist_run_task_id,
+         SELECT run.*, json_agg(json_build_object('checklist_run_task_id', tasks.checklist_run_task_id::text,
            'description', tasks.description, 'position', tasks.position, 'is_complete', tasks.is_complete) ORDER BY tasks.position) AS tasks
          FROM run JOIN tasks USING (checklist_run_id) GROUP BY run.checklist_run_id, run.run_date, run.shift_label, run.template_name, run.checklist_type`,
         [req.params.restaurantId, body.template_id, body.date, body.shift_label.trim()]

@@ -7,6 +7,6 @@ const units: Record<string, [string, number]> = {
 export function purchaseQuantity(quantity: number, from: string, to: string): number | null {
   from = from.trim().toLowerCase(); to = to.trim().toLowerCase();
   if (from === to) return quantity;
-  const a = units[from], b = units[to];
+  const a = Object.hasOwn(units, from) ? units[from] : undefined, b = Object.hasOwn(units, to) ? units[to] : undefined;
   return a && b && a[0] === b[0] ? quantity * a[1] / b[1] : null;
 }

@@ -125,7 +125,30 @@ catalog/detail costs, and kitchen switches reset tool state.
 
 ## Security boundary
 
-The development API listens on loopback by default. CORS remains open and
+The development API listens on loopback by default. Browser origins are explicitly allowlisted and
 there is no authentication/authorization yet, so restaurant IDs are not
 an access-control boundary. Do not expose this app publicly or store sensitive
 operational/employee data until access controls, backups, and recovery exist.
+
+## Backend-ready sprint
+
+The stable local API contract is API_CONTRACT.md; FRONTEND_HANDOFF.md explains it
+for the next UI stage. Imports use csv-parse's strict quoting/column handling, shared
+storage validation, original/converted recipe measurements, and server-stored
+immutable plans. Each plan expires after 24 hours and fingerprints its catalog and
+recipe snapshot. Confirmation takes a restaurant-scoped advisory lock, row locks,
+and one PostgreSQL transaction. A partial unique index reserves one committed source
+hash/receipt per kitchen. New previews never overwrite another reviewed plan.
+
+Manual recipe saves hold ingredient share locks through the atomic recipe write.
+Ingredient edits/archive and recipe restoration acquire locks before checking
+references, avoiding stale unit/activity decisions. Archives preserve rows and
+normalized names. Templates are editable transactionally; past runs retain their
+task/name/type snapshots. Task IDs are strings and day fields are date-only strings.
+
+MigrationRunner exports the existing dedicated-connection advisory-lock workflow
+for testing; the CLI is a thin wrapper. Real tests also launch independent CLI
+processes, prove lock waiting and legacy-data preservation, and verify failure rollback.
+Connections have acquisition/statement/idle timeouts, idle-error handling and graceful
+shutdown. Browser origins are explicitly limited to configured local frontends.
+None of this substitutes for hosted authentication, authorization or backups.

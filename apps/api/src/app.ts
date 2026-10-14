@@ -1,3 +1,4 @@
+import { importRoutes } from "./imports";
 import { recipeRoutes } from "./recipes";
 import cors from "cors";
 import { ingredientRoutes } from "./ingredients";
@@ -9,7 +10,14 @@ import { checklistRoutes } from "./checklists";
 export function createApp(database: Database) {
   const app = express();
 
-  app.use(cors());
+  const origins = new Set((process.env.WEB_ORIGINS ?? "http://localhost:5173,http://127.0.0.1:5173").split(",").map(origin => origin.trim()));
+  app.use((req, res, next) => {
+    const origin = req.get("Origin");
+    if (origin && !origins.has(origin)) { res.status(403).json({ error: "Browser origin is not allowed" }); return; }
+    next();
+  });
+  app.use(cors({ origin: (origin, callback) => callback(null, !origin || origins.has(origin)) }));
+  app.use("/api/v1/restaurants/:restaurantId/imports", express.json({ limit: "2mb" }), importRoutes(database));
   app.use(express.json({ limit: "256kb" }));
 
   app.get("/health", async (_req, res) => {

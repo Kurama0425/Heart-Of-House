@@ -1,12 +1,13 @@
-# Recipe import preparation
+# Preview-first CSV recipe import
 
-Goal: migrate an existing kitchen's recipe binder or spreadsheet without
-manually retyping every ingredient line. **Bulk import is not implemented yet.**
-This document is the source contract for a future preview-first importer.
+Bulk import is implemented through the v1 API. The React upload/preview screen is
+future frontend work. See [FRONTEND_HANDOFF.md](FRONTEND_HANDOFF.md) for that flow.
 
-## Recommended source files
+## Source files
 
-Export two UTF-8 CSV files (or provide the original spreadsheet for review).
+UTF-8 CSV with these exact headers (column order may vary). BOM, CRLF, escaped
+quotes, commas and quoted multiline instructions are supported. Headers cannot
+be duplicated or renamed. This API does not parse Excel workbooks, photos or PDFs.
 
 `ingredients.csv`:
 
@@ -14,50 +15,123 @@ Export two UTF-8 CSV files (or provide the original spreadsheet for review).
 name,purchase_unit,purchase_quantity,purchase_price
 Bread flour,lb,25,18.50
 Water,ml,1000,
-Salt,lb,1,2.25
+Salt,lb,1,0
 ```
 
-Blank `purchase_price` means unknown. `0` means intentionally free. Purchase
-quantity must be positive. Prices must not be guessed. Each restaurant's
-ingredient names are compared case-insensitively after trimming and collapsing
-whitespace, so `Flour` and ` flour ` are the same catalog item.
+Blank price means unknown. Zero means free. Name/unit are required; name is trimmed,
+whitespace collapsed and matched case-insensitively. Positive purchase quantities
+have at most four significant decimal places within storage limits. Supplied prices
+are nonnegative with at most two decimals. No prices, package sizes or units are guessed.
 
-`recipes.csv` (one row per ingredient line; repeat recipe metadata):
+`recipes.csv` (one record per ingredient line, repeating recipe metadata):
 
 ```csv
 recipe_name,instructions,yield_quantity,yield_unit,ingredient_name,quantity,unit
-Pizza dough,Mix and knead,8,portion,Bread flour,16,oz
-Pizza dough,Mix and knead,8,portion,Water,500,ml
-Pizza dough,Mix and knead,8,portion,Salt,0.5,oz
+Pizza dough,"Mix, then knead.",8,portion,Bread flour,16,oz
+Pizza dough,"Mix, then knead.",8,portion,Water,500,ml
+Pizza dough,"Mix, then knead.",8,portion,Salt,0.5,oz
 ```
 
-For multi-line instructions, quote the CSV field correctly or keep a separate
-recipe document with a stable recipe name. Include source filenames/notes so
-unresolved conversions can be traced to the original kitchen records.
+Group by normalized recipe name. Instructions/yield must agree across all its rows.
+Require 1–50 unique ingredients. Combine repeated ingredient lines explicitly; the
+importer never guesses whether they are duplicates or separate additions. Use numeric
+decimals such as 0.5, not fractions like 1/2, currency symbols or exponents.
 
-## Preview and validation before importing
+Compatible weight (g/kg/oz/lb) and US volume (ml/l/tsp/tbsp/cup/pt/qt/gal) convert
+for costing. Custom units must match the catalog. No weight-to-volume/density guesses.
+Original quantities/units remain stored beside normalized purchase-unit quantities.
 
-1. Back up the original files and the database; use a test restaurant first.
-2. Group rows by recipe name, preserving instructions and yield.
-3. Match ingredient names within the selected restaurant; flag ambiguous names
-   and missing ingredients rather than creating duplicates silently.
-4. Validate one consistent recipe yield, 1–50 unique ingredients per recipe,
-   positive quantities (up to four decimals), and supported unit conversions.
-5. Weight (g/kg/oz/lb) and US volume (ml/l/tsp/tbsp/cup/pt/qt/gal) convert
-   only within their respective families. Unknown units such as each/case
-   must exactly match the catalog's purchase unit. Do not guess density.
-6. Show a preview of converted purchase quantities, original quantities/units,
-   unknown prices, and recipe-name conflicts. Require explicit approval of
-   ambiguous mappings and existing-recipe overwrites.
-7. Import in a transaction or small resumable batches with an audit summary;
-   never overwrite existing recipes by default.
+## Limits
 
-## Known limitations
+Each CSV <=750,000 UTF-8 bytes; combined JSON request <=2 MiB. Up to 1,000 ingredient
+records, 5,000 recipe-line records, 200 recipes, and 50 lines per recipe per batch.
+Individual CSV record size is bounded at 50,000 characters. Large collections should
+be split deliberately; each accepted batch is atomic, not a streaming/resumable job.
 
-Legacy recipes created before migration 004 cannot recover the units originally
-typed: the migration backfills their stored purchase units. New saves and edits
-preserve original quantities/units. Recipe costing uses current catalog prices
-and excludes waste, labor, overhead, and historical purchase-price snapshots.
+## API flow
 
-Do not load real restaurant data into a publicly accessible installation
-until authentication, authorization, backups, and recovery are in place.
+1. POST `/api/v1/restaurants/:restaurantId/imports/preview` with JSON CSV text:
+   `{ingredients_csv,recipes_csv}`. Either file may be omitted.
+2. Read `can_commit`, `preview.errors`, `preview.warnings`, planned purchases/recipes
+   and original/converted amounts. Preview writes no kitchen records.
+3. Fix errors in source files and preview again. Unknown-price warnings are nonblocking.
+4. After explicit user confirmation, POST `/imports/:importId/commit` with ONLY
+   `{confirm:true}`. The import ID identifies the exact immutable reviewed plan.
+5. Display its receipt, then refresh catalog/recipe lists. GET `/imports/:importId`
+   retrieves a plan/receipt; retrying the same commit is safe after a lost response.
+
+Plans expire after 24 hours. Catalog or recipe changes make a plan stale; confirmation
+returns 409 and requires a fresh preview. A new preview receives a new ID, so it never
+silently changes another open screen's plan. A successful source hash has one durable
+receipt per kitchen. Concurrent/repeated confirmation saves once and returns that receipt.
+
+The confirmation transaction locks the plan and relevant catalog rows, bulk-inserts
+new purchases/recipe lines, and records the receipt in the same transaction. A write
+failure rolls back all new purchases, recipes, lines and status changes. No partial
+success or silent overwrite occurs. Successful retries return the original counts,
+not a claim that new rows were inserted again.
+
+## Matching/conflict policy
+
+- Match catalog ingredients by normalized name within THIS kitchen only.
+- Identical ingredient CSV rows reuse existing purchases/earlier source rows and
+  contribute to `skipped_ingredients` (a source-row count).
+- A different unit, quantity or price for an existing ingredient is an error, even
+  if the incoming value is blank. Edit the catalog separately or remove that CSV row.
+- Unknown/ambiguous/archived ingredient mappings block recipes until corrected.
+- Existing recipe names, including archived ones, block that source recipe. Edit
+  the existing recipe manually; bulk import never overwrites it.
+- Repeating an already committed set of files returns its receipt instead of importing again.
+
+## Problem codes
+
+Each error/warning has file, logical CSV record number (header=1) or null, code and
+message. Quoted multiline fields mean record numbers differ from physical line numbers.
+
+| Code | Meaning |
+|---|---|
+| HEADERS / CSV_INVALID | Wrong columns, malformed quoting, record length or column counts |
+| FILE_TOO_LARGE / ROW_LIMIT / RECIPE_LIMIT / LINE_LIMIT | Split or reduce the source |
+| INVALID_INGREDIENT / INVALID_RECIPE_ROW | Missing/invalid labels, prices or measurements |
+| AMBIGUOUS_CATALOG | More than one existing ingredient matches; reconcile explicitly |
+| INGREDIENT_CONFLICT | Source purchase differs from the existing purchase |
+| INGREDIENT_REUSED | Warning: identical ingredient row skipped/reused |
+| INGREDIENT_MISSING / INGREDIENT_ARCHIVED | Map or restore the catalog ingredient first |
+| RECIPE_CONFLICT / METADATA_CONFLICT / DUPLICATE_LINE | Resolve existing names or inconsistent/repeated recipe rows |
+| UNIT_INCOMPATIBLE | Unsupported conversion or a converted amount outside storage precision |
+| UNKNOWN_PRICE | Warning: affected costs will be unavailable, not $0 |
+| NOTHING_NEW | No new purchases/recipes can be imported |
+
+## Migrations and limits still in place
+
+Migration 004 preserves new recipe inputs and nullable prices; original inputs lost
+before it cannot be reconstructed. Migration 005 adds immutable preview plans and
+receipts. Migration 006 enforces normalized recipe-name uniqueness. Legacy duplicate
+names stop the relevant migration safely; nothing is automatically merged/deleted.
+
+Use fictional/test kitchens first and retain original source files. This importer
+is local, with no authentication/authorization, OCR, overwrite mode, price-history
+snapshots or preview-retention cleanup job. Public hosting requires separate security
+and recovery work. Recipes with unknown prices have unavailable batch/portion costs.
+
+## Read-only legacy duplicate diagnostics
+
+Run these in pgAdmin Query Tool only if a normalized-name index migration fails:
+
+```sql
+SELECT restaurant_id, lower(regexp_replace(btrim(name), '[[:space:]]+', ' ', 'g')) AS normalized_name,
+       array_agg(ingredient_id::text ORDER BY ingredient_id) AS ids
+FROM ingredients
+GROUP BY restaurant_id, lower(regexp_replace(btrim(name), '[[:space:]]+', ' ', 'g'))
+HAVING count(*) > 1;
+
+SELECT restaurant_id, lower(regexp_replace(btrim(name), '[[:space:]]+', ' ', 'g')) AS normalized_name,
+       array_agg(recipe_id::text ORDER BY recipe_id) AS ids
+FROM recipes
+GROUP BY restaurant_id, lower(regexp_replace(btrim(name), '[[:space:]]+', ' ', 'g'))
+HAVING count(*) > 1;
+```
+
+These queries do not change data. Rename genuinely different records deliberately;
+merging recipe references requires a separate reviewed decision. Do not delete or
+recreate the database to make a migration pass.

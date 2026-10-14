@@ -112,3 +112,7 @@ test('recipe update validates IDs and reports a missing scoped recipe', async ()
     assert.equal((await put(url + '/999', valid)).status, 404);
   });
 });
+test('unit conversion never reads inherited object properties', () => {
+  assert.equal(purchaseQuantity(1,'constructor','lb'),null);
+  assert.equal(purchaseQuantity(1,'lb','toString'),null);
+});

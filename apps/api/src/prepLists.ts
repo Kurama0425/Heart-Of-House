@@ -28,9 +28,9 @@ export function prepListRoutes(database: Database) {
     }
     try {
       const result = await database.query(
-        `SELECT pl.prep_list_id, pl.prep_date, pl.title,
+        `SELECT pl.prep_list_id, pl.prep_date::text AS prep_date, pl.title,
                 COALESCE(json_agg(json_build_object(
-                  'prep_task_id', pt.prep_task_id,
+                  'prep_task_id', pt.prep_task_id::text,
                   'description', pt.description,
                   'position', pt.position,
                   'is_complete', pt.is_complete,
@@ -68,7 +68,7 @@ export function prepListRoutes(database: Database) {
         `WITH new_list AS (
            INSERT INTO prep_lists (restaurant_id, prep_date, title)
            VALUES ($1, $2, $3)
-           RETURNING prep_list_id, prep_date, title
+           RETURNING prep_list_id, prep_date::text AS prep_date, title
          ), new_tasks AS (
            INSERT INTO prep_tasks (prep_list_id, description, position)
            SELECT new_list.prep_list_id, task.description, (task.position - 1)::integer
@@ -77,7 +77,7 @@ export function prepListRoutes(database: Database) {
          )
          SELECT new_list.prep_list_id, new_list.prep_date, new_list.title,
                 json_agg(json_build_object(
-                  'prep_task_id', new_tasks.prep_task_id,
+                  'prep_task_id', new_tasks.prep_task_id::text,
                   'description', new_tasks.description,
                   'position', new_tasks.position,
                   'is_complete', new_tasks.is_complete,
@@ -100,13 +100,15 @@ export function prepListRoutes(database: Database) {
   router.patch<{ restaurantId: string; taskId: string }>("/tasks/:taskId", async (req, res) => {
     if (!validId(req.params.taskId) || !req.body || typeof req.body !== "object" ||
         Array.isArray(req.body) || Object.keys(req.body).length !== 1 ||
-        typeof req.body.is_complete !== "boolean") {
-      res.status(400).json({ error: "Provide a valid task ID and boolean is_complete" });
+        (typeof req.body.is_complete !== "boolean" && !(typeof req.body.description === "string" && req.body.description.trim().length > 0 && [...req.body.description.trim()].length <= 300))) {
+      res.status(400).json({ error: "Provide a valid task ID and one boolean is_complete or nonblank description (up to 300 characters)" });
       return;
     }
     try {
       const result = await database.query(
-        `UPDATE prep_tasks pt
+        typeof req.body.description === "string" ? `UPDATE prep_tasks pt SET description = $3, updated_at = NOW()
+         FROM prep_lists pl WHERE pt.prep_list_id = pl.prep_list_id AND pl.restaurant_id = $1 AND pt.prep_task_id = $2
+         RETURNING pt.prep_task_id, pt.description, pt.position, pt.is_complete, pt.completed_at` : `UPDATE prep_tasks pt
          SET is_complete = $3,
              completed_at = CASE WHEN $3 THEN NOW() ELSE NULL END,
              updated_at = NOW()
@@ -114,7 +116,7 @@ export function prepListRoutes(database: Database) {
          WHERE pt.prep_list_id = pl.prep_list_id
            AND pl.restaurant_id = $1 AND pt.prep_task_id = $2
          RETURNING pt.prep_task_id, pt.description, pt.position, pt.is_complete, pt.completed_at`,
-        [req.params.restaurantId, req.params.taskId, req.body.is_complete]
+        [req.params.restaurantId, req.params.taskId, typeof req.body.description === "string" ? req.body.description.trim() : req.body.is_complete]
       );
       if (!result.rows.length) { res.status(404).json({ error: "Prep task not found" }); return; }
       res.json({ task: result.rows[0] });
