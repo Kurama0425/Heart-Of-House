@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Database } from './restaurants';
 import { purchaseQuantity } from './recipeUnits';
 const idValid = (id: unknown): id is string => typeof id === 'string' && /^[1-9]\d{0,18}$/.test(id) && BigInt(id) <= 9223372036854775807n;
-const quantityValid = (n: unknown): n is number => typeof n === 'number' && n > 0 && n < 1e8 && /^\d+(?:\.\d{1,4})?$/.test(String(n));
+const quantityValid = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0 && n < 1e8 && /^\d+(?:\.\d{1,4})?$/.test(String(n));
 const label = (s: unknown, max: number): s is string => typeof s === 'string' && !!s.trim() && [...s.trim()].length <= max;
 export function recipeRoutes(database: Database) {
   const router = Router({ mergeParams: true });
