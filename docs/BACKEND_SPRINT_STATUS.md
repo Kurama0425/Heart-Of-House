@@ -38,7 +38,15 @@ CI run 38630974121 passed initial import/core/migration and browser workflows.
 CI run 38631927890 passed immutable preview/duplicate confirmation, stale/expiry,
 rollback, blocked concurrent unit editor, template snapshot preservation and
 independent-process migration tests, plus all existing tests/builds/browser checks.
-Final history/archived-list/legacy-duplicate changes are awaiting their combined CI run.
+Final combined implementation e718bc8844d5882c4f4cd723d0197f85fde6cb22 passed
+[CI run 38632777182](https://github.com/Kurama0425/Heart-Of-House/actions/runs/38632777182):
+46/46 API tests (including the existing opt-in PostgreSQL suite), 10/10 additional
+PostgreSQL tests/subtests, 4/4 frontend calculation tests, both production builds,
+and 1/1 Chromium workflow. All six migrations, repeat migration/seed runs,
+concurrent CLI lock waiting, legacy backfills, duplicate-name safe failures,
+import rollback/idempotence/isolation/expiry, blocked unit edits and template
+snapshot preservation were actually executed. Final documentation-only follow-up
+records these results without changing implementation.
 Never treat this document's earlier passes as proof of an untested later revision.
 
 ## Deliberate limits / remaining work
@@ -55,6 +63,6 @@ Never treat this document's earlier passes as proof of an untested later revisio
 
 ## Readiness boundary
 
-Once the final combined CI is green, the supported local kitchen workflows and CSV
+The final combined CI is green. The supported local kitchen workflows and CSV
 backend are ready for frontend-focused work. This is a bounded local backend milestone,
 not a claim that every future restaurant feature or hosted-production concern is done.
