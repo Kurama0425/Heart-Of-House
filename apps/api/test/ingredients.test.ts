@@ -64,3 +64,18 @@ test('updates ingredient purchases with restaurant scoping and unit protection',
     const response = await fetch(`${url}/api/v1/restaurants/1/ingredients/2`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Flour', purchase_unit: 'lb', purchase_quantity: 25, purchase_price: 20 }) }); assert.equal(response.status, 200);
   });
 });
+
+test('accepts an unknown price and normalizes internal name whitespace', async () => {
+  await withApi({ async query(sql, values) {
+    assert(sql.startsWith('INSERT INTO ingredients'));
+    assert.deepEqual(values, ['1', 'Bread Flour', 'lb', 25, null]);
+    return { rows: [{ ingredient_id: '3', name: 'Bread Flour', purchase_price: null }] };
+  } }, async url => {
+    const response = await fetch(url + '/api/v1/restaurants/1/ingredients', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: '  Bread   Flour ', purchase_unit: 'lb', purchase_quantity: 25 })
+    });
+    assert.equal(response.status, 201);
+    assert.equal((await response.json()).ingredient.purchase_price, null);
+  });
+});

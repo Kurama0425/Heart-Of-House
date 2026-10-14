@@ -2,7 +2,7 @@ import { request } from "./request";
 import { formatCost } from './recipeCost';
 import { FormEvent, useEffect, useState } from 'react';
 type Ingredient = { ingredient_id: string; name: string; purchase_unit: string };
-type Line = { ingredient_id: string; quantity: string; unit: string; name?: string; line_cost?: string | null };
+type Line = { ingredient_id: string; quantity: string; unit: string; original_quantity?: string; original_unit?: string; name?: string; line_cost?: string | null };
 type Recipe = { recipe_id: string; name: string; instructions: string; yield_quantity: string; yield_unit: string; ingredients?: Line[]; costing?: { batch_cost: string | null; portion_cost: string | null } };
 
 export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: { apiUrl: string; restaurantId: string; catalogRevision?: number; onSaved?: () => void }) {
@@ -59,7 +59,7 @@ export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: 
   function beginEdit() {
     if (!detail?.ingredients) return;
     setForm({ name: detail.name, instructions: detail.instructions, yield_quantity: detail.yield_quantity, yield_unit: detail.yield_unit });
-    setLines(detail.ingredients.map(i => ({ ingredient_id: String(i.ingredient_id), quantity: String(i.quantity), unit: i.unit })));
+    setLines(detail.ingredients.map(i => ({ ingredient_id: String(i.ingredient_id), quantity: String(i.original_quantity ?? i.quantity), unit: i.original_unit ?? i.unit })));
     setEditingId(detail.recipe_id); setNotice('Editing saved recipe. Make changes above, then save.');
     document.getElementById('recipe-form')?.scrollIntoView({ behavior: 'smooth' });
   }
@@ -77,7 +77,7 @@ export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: 
       <label>Batch yield <input required type="number" min="0.0001" max="99999999.9999" step="0.0001" value={form.yield_quantity} onChange={e => setForm({ ...form, yield_quantity: e.target.value })} /></label>
       <label>Yield unit <input required maxLength={50} value={form.yield_unit} onChange={e => setForm({ ...form, yield_unit: e.target.value })} /></label>
       <label>Instructions <textarea required maxLength={10000} rows={4} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} /></label>
-      <p>Use the purchase unit, or compatible g/kg/oz/lb and ml/l/tsp/tbsp/cup/pt/qt/gal units. Volume is US customary. Weight cannot convert to volume. Saved quantities are converted to purchase units and rounded to four decimals.</p>
+      <p>Use the purchase unit, or compatible g/kg/oz/lb and ml/l/tsp/tbsp/cup/pt/qt/gal units. Volume is US customary. Weight cannot convert to volume. Costing quantities are converted to purchase units; original measurements are preserved.</p>
       {lines.map((line, index) => <div className="recipe-line" key={index}>
         <label>Ingredient {index + 1} <select aria-label={`Ingredient ${index + 1}`} required value={line.ingredient_id} onChange={e => updateLine(index, { ingredient_id: e.target.value, unit: ingredients.find(i => i.ingredient_id === e.target.value)?.purchase_unit ?? '' })}>
           <option value="">Choose ingredient</option>{ingredients.filter(i => i.ingredient_id === line.ingredient_id || !lines.some(l => l.ingredient_id === i.ingredient_id)).map(i => <option key={i.ingredient_id} value={i.ingredient_id}>{i.name}</option>)}
@@ -100,7 +100,7 @@ export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: 
       <p><strong>Cost per portion: {formatCost(detail.costing?.portion_cost)}</strong></p>
       <p>Based on current ingredient purchase prices. Ingredient cost only; excludes labor, waste, and overhead. Per-portion cost requires a yield unit of portion(s) or serving(s).</p>
       {detail.costing?.batch_cost == null && <p role="status">Cost unavailable. Check that every ingredient has a valid purchase quantity and matching saved unit.</p>}
-      <div className="ingredient-table"><table><thead><tr><th>Ingredient</th><th>Quantity</th><th>Line cost</th></tr></thead><tbody>{detail.ingredients?.map(i => <tr key={i.ingredient_id}><td>{i.name}</td><td>{i.quantity} {i.unit}</td><td>{formatCost(i.line_cost)}</td></tr>)}</tbody></table></div>
+      <div className="ingredient-table"><table><thead><tr><th>Ingredient</th><th>Quantity</th><th>Line cost</th></tr></thead><tbody>{detail.ingredients?.map(i => <tr key={i.ingredient_id}><td>{i.name}</td><td>{i.original_quantity ?? i.quantity} {i.original_unit ?? i.unit}</td><td>{formatCost(i.line_cost)}</td></tr>)}</tbody></table></div>
     </div><p style={{ whiteSpace: 'pre-wrap' }}>{detail.instructions}</p></article>}
   </section>;
 }

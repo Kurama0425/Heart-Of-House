@@ -101,3 +101,9 @@ Integration tests create a uniquely named schema, apply all migrations in it, an
 remove only that test schema afterward. The database role needs CREATE SCHEMA.
 The CI database is disposable. The test does not touch existing application tables.
 Keep the application local until authentication and authorization are implemented.
+
+Migration 004 adds import-ready measurement fields and normalized ingredient-name
+uniqueness. If it reports a duplicate key, existing names normalize to the same
+value (for example Flour/flour). No automatic merge/deletion happens. Keep the
+database intact and reconcile names deliberately before retrying. Blank purchase
+prices mean unknown; enter 0 only for a truly free ingredient.

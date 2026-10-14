@@ -28,7 +28,7 @@ test('saves parent and converted ingredient lines in one bound SQL statement', a
     if (calls === 1) { assert.deepEqual(values, ['1', ['2']]); return { rows: [{ ingredient_id: '2', name: 'Flour', purchase_unit: 'lb' }] }; }
     assert(sql.includes('WITH items')); assert(sql.includes('INSERT INTO recipe_ingredients'));
     assert.deepEqual(values?.slice(0, 5), ['1', 'Dough', 'Mix and knead.', 8, 'portion']);
-    assert.deepEqual(JSON.parse(values?.[5] as string), [{ ingredient_id: '2', quantity: 1, unit: 'lb' }]);
+    assert.deepEqual(JSON.parse(values?.[5] as string), [{ ingredient_id: '2', quantity: 1, unit: 'lb', original_quantity: 16, original_unit: 'oz' }]);
     return { rows: [{ recipe_id: '3', name: 'Dough' }] };
   } }, async url => { assert.equal((await post(url, valid)).status, 201); });
   assert.equal(calls, 2);

@@ -23,7 +23,7 @@ PostgreSQL
 
 ### Web application
 
-Planned location: `apps/web`
+Location: `apps/web`
 
 The web application will become the main dashboard for managers and staff.
 
@@ -90,5 +90,40 @@ The React Recipe Builder uses restaurant-scoped create/list/detail routes.
 The API checks ingredient ownership and unit compatibility, normalizes quantities
 to purchase units, and inserts the recipe and ingredient lines in a single
 PostgreSQL data-modifying CTE. This avoids partial recipes without requiring
-transaction state on the injected query interface. No new schema is needed.
+transaction state on the injected query interface. Migration 004 adds original
+quantity/unit fields so saved recipes remain editable in kitchen units.
 Recipe routes remain local-demo only until authentication/authorization.
+
+## Current kitchen modules
+
+All data APIs are scoped by restaurant ID (not yet authorized to a logged-in
+user). Current routes include restaurant create/list/detail, ingredient
+create/list, recipe create/list/detail/edit, dated prep lists and task completion,
+and reusable opening/closing checklist templates/runs/task completion.
+
+Recipe lines store both `quantity/unit` in the ingredient's purchase units
+(for PostgreSQL NUMERIC costing) and `original_quantity/original_unit` as
+entered by the cook. Missing ingredient purchase prices are SQL NULL;
+intentional zero prices remain zero. The recipe detail query refuses to report
+a partial batch cost if any ingredient cannot be priced.
+
+Migration 004 enforces normalized ingredient names per restaurant through
+a unique functional index. It never automatically merges pre-existing
+duplicates. Migrations run transactionally and must be applied before
+starting the updated API.
+
+## Verification
+
+Stubbed HTTP tests cover validation and route behavior. The opt-in PostgreSQL
+integration test runs against a disposable database ending in `_test` and
+checks real recipe SQL, food costs, prep persistence, and checklist persistence.
+GitHub Actions provisions PostgreSQL, runs migrations, tests both apps,
+and builds both apps on pushes and pull requests. Interactive browser
+verification is still separate.
+
+## Security boundary
+
+The development API listens on loopback by default. CORS remains open and
+there is no authentication/authorization yet, so restaurant IDs are not
+an access-control boundary. Do not expose this app publicly or store sensitive
+operational/employee data until access controls, backups, and recovery exist.

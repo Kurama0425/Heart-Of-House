@@ -30,20 +30,22 @@ export function ingredientRoutes(database: Database) {
       res.status(400).json({ error: "Provide only name, purchase_unit, purchase_quantity, and purchase_price" }); return;
     }
     const { name, purchase_unit, purchase_quantity, purchase_price } = body;
+    const normalizedName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
+    const price = purchase_price == null ? null : purchase_price;
     // Match PostgreSQL NUMERIC precision; reject values that would silently round.
     const decimal = (value: unknown, places: number, max: number, positive: boolean) =>
       typeof value === "number" && Number.isFinite(value) && value < max &&
       (positive ? value > 0 : value >= 0) && /^\d+(?:\.\d+)?$/.test(String(value)) &&
       (String(value).split(".")[1]?.length ?? 0) <= places;
-    if (typeof name !== "string" || !name.trim() || [...name.trim()].length > 150 ||
+    if (!normalizedName || [...normalizedName].length > 150 ||
         typeof purchase_unit !== "string" || !purchase_unit.trim() || [...purchase_unit.trim()].length > 50 ||
-        !decimal(purchase_quantity, 4, 100000000, true) || !decimal(purchase_price, 2, 10000000000, false)) {
+        !decimal(purchase_quantity, 4, 100000000, true) || (price !== null && !decimal(price, 2, 10000000000, false))) {
       res.status(400).json({ error: "Name and purchase unit are required; quantity must be positive (up to 4 decimals), price nonnegative (up to 2 decimals), within database limits" }); return;
     }
     try {
       const result = await database.query(
         editing ? "UPDATE ingredients SET name = $2, purchase_unit = $3, purchase_quantity = $4, purchase_price = $5, updated_at = NOW() WHERE restaurant_id = $1 AND ingredient_id = $6 AND (purchase_unit = $3 OR NOT EXISTS (SELECT 1 FROM recipe_ingredients WHERE ingredient_id = $6)) RETURNING *" : "INSERT INTO ingredients (restaurant_id, name, purchase_unit, purchase_quantity, purchase_price) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        editing ? [req.params.restaurantId, name.trim(), purchase_unit.trim(), purchase_quantity, purchase_price, req.params.ingredientId] : [req.params.restaurantId, name.trim(), purchase_unit.trim(), purchase_quantity, purchase_price]
+        editing ? [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price, req.params.ingredientId] : [req.params.restaurantId, normalizedName, purchase_unit.trim(), purchase_quantity, price]
       );
       if (!result.rows.length) {
         const exists = await database.query("SELECT ingredient_id FROM ingredients WHERE restaurant_id = $1 AND ingredient_id = $2", [req.params.restaurantId, req.params.ingredientId]);

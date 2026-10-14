@@ -59,7 +59,7 @@ workflow before starting several unrelated modules.
 
 ## Next build target
 
-**Stabilize the integration PR and prepare recipe import:** preserve original measurement units and clarify unknown pricing. Contact/timezone form fields remain follow-up work; the update API supports them.
+**Stabilize the integration PR and prepare recipe import:** build the actual bulk-import review flow on the preserved measurements and unknown-price support. Contact/timezone form fields remain follow-up work; the update API supports them.
 
 Restaurant profile editing remains useful but no longer blocks the kitchen workflow.
 
@@ -68,3 +68,5 @@ of kitchen data. Keep existing working code and narrow future development instea
 of removing useful foundations.
 
 - [x] Dashboard first-run restaurant setup: create a kitchen and unlock Ingredients/Recipes without API commands or refreshing.
+
+- [x] Import preparation: original measurements, normalized ingredient-name uniqueness, optional unknown prices (migration 004). Actual bulk upload/import remains pending.

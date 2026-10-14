@@ -12,7 +12,7 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await ingredients.getByLabel('Name', { exact: true }).fill('Flour');
   await ingredients.getByLabel('Purchase unit', { exact: true }).fill('lb');
   await ingredients.getByLabel('Purchase quantity').fill('25');
-  await ingredients.getByLabel('Purchase price ($)').fill('18.50');
+  await ingredients.getByLabel('Purchase price ($, optional)').fill('18.50');
   await ingredients.getByRole('button', { name: 'Save ingredient' }).click();
   await expect(ingredients.getByRole('cell', { name: 'Flour', exact: true })).toBeVisible();
   const recipes = page.locator('#recipes');
@@ -27,10 +27,11 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await expect(recipes.getByText('Batch cost: $0.74', { exact: true })).toBeVisible();
   await recipes.getByRole('button', { name: 'Edit recipe', exact: true }).click();
   await recipes.getByLabel('Quantity', { exact: true }).fill('2');
+  await recipes.getByLabel('Unit', { exact: true }).fill('lb');
   await recipes.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(recipes.getByText('Batch cost: $1.48', { exact: true })).toBeVisible();
   await ingredients.getByRole('button', { name: 'Edit Flour', exact: true }).click();
-  await ingredients.getByLabel('Purchase price ($)').fill('25');
+  await ingredients.getByLabel('Purchase price ($, optional)').fill('25');
   await ingredients.getByRole('button', { name: 'Save ingredient' }).click();
   await expect(recipes.getByText('Batch cost: $2.00', { exact: true })).toBeVisible();
   await kitchen.getByLabel('Restaurant name').fill(name + ' Updated');

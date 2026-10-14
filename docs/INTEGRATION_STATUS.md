@@ -43,8 +43,8 @@ PostgreSQL service and browser installer; report its actual outcome separately.
 ## Unfinished
 
 - Authentication/authorization and safe hosted deployment.
-- Bulk recipe import; original entered quantities/units are still normalized away.
-- Case-insensitive ingredient normalization and unknown-versus-zero pricing.
+- Actual bulk recipe upload/import; original measurements are now preserved.
+- Broader migration compatibility verification on a copy of Sean’s actual database.
 - Restaurant contact/timezone editor UI (the API accepts validated fields).
 - Migration runner concurrency protection (run only one migration process).
 - Broader browser race/error-path tests, accessibility audit and portfolio screenshots.
@@ -61,3 +61,13 @@ main writes. The one-time sprint prompt could not be updated because its schedul
 time was already past; its already-running changes were checked and integrated.
 The independent reviewer should review this PR and maintain
 these unresolved issues in the review backlog.
+
+## Combined sprint follow-up
+
+Main commit f9731bd landed during final verification. Integrated its import-readiness
+migration, original measurement persistence, normalized ingredient uniqueness, nullable
+prices, loopback API binding, additional real-database suite and import documentation.
+Retained the shared kitchen selection, ingredient editor and browser checks. Local
+combined checks: 37 API tests passed, one opt-in database test skipped; both builds
+passed. New combined CI verification is pending. Migration 004 intentionally fails
+if legacy normalized-name duplicates exist, rather than merging data destructively.

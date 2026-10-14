@@ -171,7 +171,7 @@ both the API and web dev servers using the setup instructions above.
 - `POST /api/v1/restaurants/:restaurantId/ingredients` creates one.
 - Body: `{ "name": "Flour", "purchase_unit": "lb", "purchase_quantity": 25, "purchase_price": 18.50 }`.
 - Quantity must be positive with at most four decimal places and below 100,000,000.
-- Price must be nonnegative with at most two decimal places and below 10,000,000,000.
+- Price may be null/omitted when unknown; supplied price must be nonnegative with at most two decimal places and below 10,000,000,000.
 - Names and units are trimmed, required, and limited to 150 and 50 characters.
 - Returns 400 for invalid input, 404 for a missing restaurant, 409 for a duplicate
   name in that restaurant, and 503 for an unavailable database.
@@ -205,8 +205,8 @@ ingredients. Invalid input or foreign ingredients return 400, missing resources
 Conversions support g/kg/oz/lb and ml/l/tsp/tbsp/cup/pt/qt/gal (US customary
 volume). Unknown units such as each or case must match the purchase unit.
 No weight-to-volume conversions without density. Lines persist in purchase units,
-rounded to four decimals; amounts that round to zero or exceed storage limits
-are rejected. Original entered units are not retained. No schema migration is
+rounded to four decimals for costing; amounts that round to zero or exceed storage limits
+are rejected. Original entered quantities/units are retained after migration 004. No schema migration is
 needed beyond the existing initial migration. Saved recipes can be edited from
 their detail view.
 
@@ -297,3 +297,5 @@ fictional browser-test records; use a disposable database for that test. CI prov
 PostgreSQL, checks repeat migration/seed runs, runs unit/integration tests and both
 builds, then verifies the browser workflows. Older per-feature test counts above
 are historical; consult the current CI run and `docs/INTEGRATION_STATUS.md`.
+
+Recipe import preparation from the concurrent sprint is integrated: migration 004 preserves original measurements, allows unknown prices and prevents normalized-name duplicates. See [RECIPE_IMPORT.md](docs/RECIPE_IMPORT.md). Run all migrations before using these fields.
