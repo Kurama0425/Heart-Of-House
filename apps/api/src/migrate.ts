@@ -8,8 +8,8 @@ const migrationsDirectory = path.resolve(
   "../../database/migrations"
 );
 
-async function ensureMigrationsTable(): Promise<void> {
-  await db.query(`
+async function ensureMigrationsTable(client: import("pg").PoolClient): Promise<void> {
+  await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       migration_name VARCHAR(255) PRIMARY KEY,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -17,8 +17,8 @@ async function ensureMigrationsTable(): Promise<void> {
   `);
 }
 
-async function getAppliedMigrations(): Promise<Set<string>> {
-  const result = await db.query<{ migration_name: string }>(
+async function getAppliedMigrations(client: import("pg").PoolClient): Promise<Set<string>> {
+  const result = await client.query<{ migration_name: string }>(
     "SELECT migration_name FROM schema_migrations"
   );
 
@@ -31,9 +31,9 @@ async function runMigrations(): Promise<void> {
   const lockClient = await db.connect();
   try {
     await lockClient.query("SELECT pg_advisory_lock(72425, 1)");
-    await ensureMigrationsTable();
+    await ensureMigrationsTable(lockClient);
 
-    const appliedMigrations = await getAppliedMigrations();
+    const appliedMigrations = await getAppliedMigrations(lockClient);
     const migrationFiles = (await readdir(migrationsDirectory))
       .filter((file) => file.endsWith(".sql"))
       .sort();
@@ -47,7 +47,7 @@ async function runMigrations(): Promise<void> {
       const migrationPath = path.join(migrationsDirectory, migrationName);
       const sql = await readFile(migrationPath, "utf8");
 
-      const client = await db.connect();
+      const client = lockClient;
 
       try {
         await client.query("BEGIN");
@@ -62,8 +62,6 @@ async function runMigrations(): Promise<void> {
       } catch (error) {
         await client.query("ROLLBACK");
         throw error;
-      } finally {
-        client.release();
       }
     }
   } finally {
