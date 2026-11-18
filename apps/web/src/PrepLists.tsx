@@ -19,13 +19,15 @@ export function PrepLists({ apiUrl, restaurantId }: { apiUrl: string; restaurant
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
   const mutationPending = useRef(false);
   const tasks = useMemo(() => taskText.split("\n").map(task => task.trim()).filter(Boolean), [taskText]);
 
   useEffect(() => {
     if (!restaurantId) { setPrepList(null); return; }
     let active = true;
-    setLoading(true); setError(""); setPrepList(null);
+    setLoading(true); setError(""); setPrepList(null); setEditing(null);
     request(`${apiUrl}/api/v1/restaurants/${restaurantId}/prep-lists?date=${date}`)
       .then(data => { if (active) setPrepList(data.prep_list); })
       .catch(error => { if (active) setError(error.message); })
@@ -62,6 +64,22 @@ export function PrepLists({ apiUrl, restaurantId }: { apiUrl: string; restaurant
     finally { mutationPending.current = false; setSaving(false); }
   }
 
+  async function saveDescription(event: FormEvent, task: PrepTask) {
+    event.preventDefault();
+    if (mutationPending.current || !description.trim()) return;
+    mutationPending.current = true; setSaving(true); setError("");
+    try {
+      await request(`${apiUrl}/api/v1/restaurants/${restaurantId}/prep-lists/tasks/${task.prep_task_id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: description.trim() })
+      });
+      setPrepList(current => current ? { ...current, tasks: current.tasks.map(item =>
+        item.prep_task_id === task.prep_task_id ? { ...item, description: description.trim() } : item) } : current);
+      setEditing(null);
+    } catch (error) { setError(error instanceof Error ? error.message : "Unable to edit task"); }
+    finally { mutationPending.current = false; setSaving(false); }
+  }
+
   const completed = prepList?.tasks.filter(task => task.is_complete).length ?? 0;
 
   return <section id="prep" className="ingredient-panel" aria-labelledby="prep-heading">
@@ -87,7 +105,15 @@ export function PrepLists({ apiUrl, restaurantId }: { apiUrl: string; restaurant
         <progress value={completed} max={prepList.tasks.length} aria-label={`${completed} of ${prepList.tasks.length} tasks complete`} />
         <ul className="prep-tasks">
           {prepList.tasks.map(task => <li key={task.prep_task_id} className={task.is_complete ? "complete" : ""}>
+            {editing === task.prep_task_id ? <form onSubmit={event => saveDescription(event, task)}>
+              <label>Task wording <input autoFocus required maxLength={300} disabled={saving} value={description} onChange={event => setDescription(event.target.value)} /></label>
+              <button disabled={saving || !description.trim()} type="submit">{saving ? "Saving…" : "Save task"}</button>
+              <button disabled={saving} type="button" onClick={() => setEditing(null)}>Cancel</button>
+            </form> : <>
             <label><input type="checkbox" disabled={saving || loading} checked={task.is_complete} onChange={() => toggleTask(task)} /> <span>{task.description}</span></label>
+              <button type="button" disabled={saving || loading} onClick={() => { setEditing(task.prep_task_id); setDescription(task.description); }}>Edit task</button>
+            </>}
+
           </li>)}
         </ul>
       </div>}
