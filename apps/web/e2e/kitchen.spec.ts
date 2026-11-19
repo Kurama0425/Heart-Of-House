@@ -41,6 +41,22 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await prep.getByRole('button', { name: 'Create prep list', exact: true }).click();
   await prep.getByRole('checkbox', { name: 'Portion dough' }).check();
   await expect(prep.getByRole('checkbox')).toBeEnabled();
+  // Editing never changes completion, and failed saves keep the draft for retry.
+  await prep.getByRole('button', { name: 'Edit task', exact: true }).click();
+  await prep.getByLabel('Task wording').fill('Discard this edit');
+  await prep.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(prep.getByRole('checkbox', { name: 'Portion dough', exact: true })).toBeChecked();
+  await prep.getByRole('button', { name: 'Edit task', exact: true }).click();
+  await prep.getByLabel('Task wording').fill('Portion dough balls');
+  await page.route('**/prep-lists/tasks/*', route => route.fulfill({
+    status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Test save unavailable' })
+  }), { times: 1 });
+  await prep.getByRole('button', { name: 'Save task', exact: true }).click();
+  await expect(prep.getByRole('alert')).toContainText('Test save unavailable');
+  await expect(prep.getByLabel('Task wording')).toHaveValue('Portion dough balls');
+  await prep.getByRole('button', { name: 'Save task', exact: true }).click();
+  await expect(prep.getByRole('checkbox', { name: 'Portion dough balls', exact: true })).toBeChecked();
+  await expect(prep.getByRole('alert')).toHaveCount(0);
   const checklists = page.locator('#checklists');
   await checklists.getByLabel('Tasks—one per line').fill('Stock line');
   await checklists.getByRole('button', { name: 'Save template', exact: true }).click();
@@ -49,7 +65,7 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await expect(checklists.getByRole('checkbox')).toBeEnabled();
   await page.reload();
   await expect(kitchen.getByLabel('Restaurant name')).toHaveValue(name + ' Updated');
-  await expect(prep.getByRole('checkbox', { name: 'Portion dough' })).toBeChecked();
+  await expect(prep.getByRole('checkbox', { name: 'Portion dough balls', exact: true })).toBeChecked();
   await expect(checklists.getByRole('checkbox', { name: 'Stock line' })).toBeChecked();
   await expect(ingredients.getByRole('cell', { name: '$25.00', exact: true })).toBeVisible();
   await recipes.getByLabel('Saved recipes').selectOption({ label: 'Dough — 8.0000 portion' });
