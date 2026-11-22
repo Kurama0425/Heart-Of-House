@@ -5,6 +5,7 @@ import { formatIngredientUnitCost } from "./ingredientCost";
 type Ingredient = { ingredient_id: string; name: string; purchase_unit: string; purchase_quantity: string; purchase_price: string | null };
 
 export function Ingredients({ apiUrl, restaurantId, onSaved }: { apiUrl: string; restaurantId: string; onSaved?: () => void }) {
+  const [onlyUnpriced, setOnlyUnpriced] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [error, setError] = useState("");
@@ -34,6 +35,8 @@ export function Ingredients({ apiUrl, restaurantId, onSaved }: { apiUrl: string;
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save ingredient"); }
     finally { setSaving(false); }
   }
+  const unpriced = ingredients.filter(ingredient => ingredient.purchase_price == null);
+  const visibleIngredients = onlyUnpriced ? unpriced : ingredients;
   return <section id="ingredients" className="ingredient-panel" aria-labelledby="ingredient-heading">
     <p className="eyebrow">Food cost foundation</p><h2 id="ingredient-heading">Ingredient Catalog</h2>
     <p>Enter the quantity and price of a purchase—for example, 25 lb of flour for $18.50.</p>
@@ -52,8 +55,10 @@ export function Ingredients({ apiUrl, restaurantId, onSaved }: { apiUrl: string;
     </form>
     {loading ? <p role="status">Loading ingredients…</p> : <>
       {!ingredients.length && restaurantId && !error && <p>No ingredients yet. Add your first purchase above.</p>}
-      {!!ingredients.length && <div className="ingredient-table"><table><caption>Ingredient purchases</caption><thead><tr><th>Name</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Cost per unit</th><th>Action</th></tr></thead><tbody>
-        {ingredients.map(i => <tr key={i.ingredient_id}><td>{i.name}</td><td>{i.purchase_quantity}</td><td>{i.purchase_unit}</td><td>{i.purchase_price == null ? "Not priced" : "$" + Number(i.purchase_price).toFixed(2)}</td><td>{formatIngredientUnitCost(i.purchase_quantity, i.purchase_price ?? "", i.purchase_unit)}</td><td><button type="button" disabled={saving} onClick={() => { setEditingId(i.ingredient_id); setForm({ name: i.name, purchase_unit: i.purchase_unit, purchase_quantity: i.purchase_quantity, purchase_price: i.purchase_price ?? "" }); }}>Edit {i.name}</button></td></tr>)}
+      {!!ingredients.length && <label><input type="checkbox" checked={onlyUnpriced} onChange={event => setOnlyUnpriced(event.target.checked)} /> Show only unpriced ingredients ({unpriced.length})</label>}
+      {onlyUnpriced && !unpriced.length && !!ingredients.length && <p>All ingredients have a price. Zero means free; a blank price means unknown.</p>}
+      {!!visibleIngredients.length && <div className="ingredient-table"><table><caption>Ingredient purchases</caption><thead><tr><th>Name</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Cost per unit</th><th>Action</th></tr></thead><tbody>
+        {visibleIngredients.map(i => <tr key={i.ingredient_id}><td>{i.name}</td><td>{i.purchase_quantity}</td><td>{i.purchase_unit}</td><td>{i.purchase_price == null ? "Not priced" : "$" + Number(i.purchase_price).toFixed(2)}</td><td>{formatIngredientUnitCost(i.purchase_quantity, i.purchase_price ?? "", i.purchase_unit)}</td><td><button type="button" disabled={saving} onClick={() => { setEditingId(i.ingredient_id); setForm({ name: i.name, purchase_unit: i.purchase_unit, purchase_quantity: i.purchase_quantity, purchase_price: i.purchase_price ?? "" }); }}>Edit {i.name}</button></td></tr>)}
       </tbody></table></div>}
     </>}
   </section>;
