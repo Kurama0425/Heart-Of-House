@@ -55,3 +55,35 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await recipes.getByLabel('Saved recipes').selectOption({ label: 'Dough — 8.0000 portion' });
   await expect(recipes.getByText('Batch cost: $2.00', { exact: true })).toBeVisible();
 });
+
+test('unpriced filter distinguishes unknown from free and updates after pricing', async ({ page }) => {
+  await page.goto('/');
+  const kitchen = page.locator('#restaurant-setup');
+  await kitchen.getByLabel('Active kitchen').selectOption('');
+  await kitchen.getByLabel('Restaurant name').fill('Pricing Kitchen ' + Date.now());
+  await kitchen.getByRole('button', { name: 'Create restaurant', exact: true }).click();
+  const catalog = page.locator('#ingredients');
+  for (const [name, price] of [['Unknown oil', ''], ['Free water', '0']]) {
+    await catalog.getByLabel('Name', { exact: true }).fill(name);
+    await catalog.getByLabel('Purchase unit', { exact: true }).fill('lb');
+    await catalog.getByLabel('Purchase price ($, optional)').fill(price);
+    await catalog.getByRole('button', { name: 'Save ingredient', exact: true }).click();
+    await expect(catalog.getByRole('cell', { name, exact: true })).toBeVisible();
+  }
+  const filter = catalog.getByRole('checkbox', { name: /Show only unpriced ingredients/ });
+  await expect(filter).toHaveAccessibleName('Show only unpriced ingredients (1)');
+  await filter.check();
+  await expect(catalog.getByRole('cell', { name: 'Unknown oil', exact: true })).toBeVisible();
+  await expect(catalog.getByRole('cell', { name: 'Free water', exact: true })).toHaveCount(0);
+  await catalog.getByRole('button', { name: 'Edit Unknown oil', exact: true }).click();
+  await catalog.getByLabel('Purchase price ($, optional)').fill('5');
+  await catalog.getByRole('button', { name: 'Save ingredient', exact: true }).click();
+  await expect(catalog.getByText('All ingredients have a price.', { exact: false })).toBeVisible();
+  await expect(filter).toHaveAccessibleName('Show only unpriced ingredients (0)');
+  await filter.uncheck();
+  await expect(catalog.getByRole('cell', { name: 'Unknown oil', exact: true })).toBeVisible();
+  await expect(catalog.getByRole('cell', { name: 'Free water', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(catalog.getByRole('cell', { name: '$5.00', exact: true })).toBeVisible();
+  await expect(catalog.getByRole('cell', { name: '$0.00', exact: true })).toBeVisible();
+});
