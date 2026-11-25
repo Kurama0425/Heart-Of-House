@@ -55,3 +55,31 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await recipes.getByLabel('Saved recipes').selectOption({ label: 'Dough — 8.0000 portion' });
   await expect(recipes.getByText('Batch cost: $2.00', { exact: true })).toBeVisible();
 });
+
+test('routine preview follows selection and matches the saved shift copy', async ({ page }) => {
+  await page.goto('/');
+  const kitchen = page.locator('#restaurant-setup');
+  await kitchen.getByLabel('Active kitchen').selectOption('');
+  await kitchen.getByLabel('Restaurant name').fill('Routine Kitchen ' + Date.now());
+  await kitchen.getByRole('button', { name: 'Create restaurant', exact: true }).click();
+  const checklists = page.locator('#checklists');
+  for (const [name, type, tasks] of [['Open line', 'opening', 'Heat equipment\nStock line'], ['Close line', 'closing', 'Clean grill']]) {
+    await checklists.getByLabel('Name', { exact: true }).fill(name);
+    await checklists.getByLabel('Type', { exact: true }).selectOption(type);
+    await checklists.getByLabel('Tasks—one per line').fill(tasks);
+    await checklists.getByRole('button', { name: 'Save template', exact: true }).click();
+    await expect(checklists.getByLabel('Template', { exact: true }).locator('option:checked')).toContainText(name);
+  }
+  const preview = checklists.locator('[aria-label="Selected routine preview"]');
+  await expect(preview.getByRole('listitem')).toHaveText(['Clean grill']);
+  await expect(preview.getByText('Closing routine · 1 tasks')).toBeVisible();
+  await checklists.getByLabel('Template', { exact: true }).selectOption({ label: 'Open line (2)' });
+  await expect(preview.getByRole('listitem')).toHaveText(['Heat equipment', 'Stock line']);
+  await expect(preview.getByText('Opening routine · 2 tasks')).toBeVisible();
+  await checklists.getByRole('button', { name: 'Start fresh checklist', exact: true }).click();
+  await expect(checklists.getByRole('checkbox', { name: 'Heat equipment' })).toBeVisible();
+  await expect(checklists.getByRole('checkbox', { name: 'Stock line' })).toBeVisible();
+  await page.reload();
+  await expect(checklists.getByRole('checkbox', { name: 'Heat equipment' })).toBeVisible();
+  await expect(checklists.getByRole('checkbox', { name: 'Stock line' })).toBeVisible();
+});
