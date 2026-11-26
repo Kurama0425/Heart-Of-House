@@ -72,7 +72,7 @@ test('routine preview follows selection and matches the saved shift copy', async
   }
   const preview = checklists.locator('[aria-label="Selected routine preview"]');
   await expect(preview.getByRole('listitem')).toHaveText(['Clean grill']);
-  await expect(preview.getByText('Closing routine · 1 tasks')).toBeVisible();
+  await expect(preview.getByText('Closing routine · 1 task')).toBeVisible();
   await checklists.locator('select').nth(1).selectOption({ label: 'Open line (2)' });
   await expect(preview.getByRole('listitem')).toHaveText(['Heat equipment', 'Stock line']);
   await expect(preview.getByText('Opening routine · 2 tasks')).toBeVisible();
