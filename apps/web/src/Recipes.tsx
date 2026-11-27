@@ -7,6 +7,7 @@ type Recipe = { recipe_id: string; name: string; instructions: string; yield_qua
 
 export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: { apiUrl: string; restaurantId: string; catalogRevision?: number; onSaved?: () => void }) {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [search, setSearch] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [detail, setDetail] = useState<Recipe | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
@@ -64,6 +65,9 @@ export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: 
     document.getElementById('recipe-form')?.scrollIntoView({ behavior: 'smooth' });
   }
   function cancelEdit() { setEditingId(''); setForm({ name: '', instructions: '', yield_quantity: '1', yield_unit: 'portion' }); setLines([]); setNotice(''); }
+  const matches = recipes.filter(recipe => recipe.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const options = recipes.filter(recipe => matches.includes(recipe) || recipe.recipe_id === selectedId);
+
   return <section id="recipes" className="ingredient-panel" aria-labelledby="recipe-heading">
     <p className="eyebrow">Standardize the kitchen</p><h2 id="recipe-heading">Recipe Builder</h2>
     <p>Save a batch recipe with its yield and ingredient quantities.</p>
@@ -91,8 +95,10 @@ export function Recipes({ apiUrl, restaurantId, catalogRevision = 0, onSaved }: 
       {editingId && <> <button type="button" onClick={cancelEdit}>Cancel edit</button></>}
     </fieldset></form>
     {!loading && !recipes.length && restaurantId && <p>No saved recipes yet.</p>}
+    {!!recipes.length && <label>Search recipes <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Recipe name" /></label>}
+    {!!recipes.length && <p role="status">{matches.length} of {recipes.length} recipes match{selectedId && !matches.some(recipe => recipe.recipe_id === selectedId) ? "; selected recipe remains available" : ""}.</p>}
     {!!recipes.length && <label>Saved recipes <select value={selectedId} onChange={e => { setError(''); setSelectedId(e.target.value); }}>
-      <option value="">Choose a recipe</option>{recipes.map(r => <option key={r.recipe_id} value={r.recipe_id}>{r.name} — {r.yield_quantity} {r.yield_unit}</option>)}
+      <option value="">Choose a recipe</option>{options.map(r => <option key={r.recipe_id} value={r.recipe_id}>{r.name} — {r.yield_quantity} {r.yield_unit}</option>)}
     </select></label>}
     {detail && <article><h3>{detail.name}</h3><p>Batch yield: {detail.yield_quantity} {detail.yield_unit}</p><button type="button" onClick={beginEdit}>Edit recipe</button><div className="recipe-costing">
       <h4>Food cost estimate</h4>

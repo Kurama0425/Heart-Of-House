@@ -36,6 +36,17 @@ test('kitchen, ingredient, recipe and shift workflows persist', async ({ page })
   await expect(recipes.getByText('Batch cost: $2.00', { exact: true })).toBeVisible();
   await kitchen.getByLabel('Restaurant name').fill(name + ' Updated');
   await kitchen.getByRole('button', { name: 'Save kitchen', exact: true }).click();
+  await recipes.getByLabel('Search recipes').fill('  dOuGh  ');
+  await expect(recipes.getByRole('status').filter({ hasText: 'recipes match' })).toHaveText('1 of 1 recipes match.');
+  await expect(recipes.getByLabel('Saved recipes').locator('option')).toHaveCount(2);
+  await recipes.getByLabel('Search recipes').fill('no matching recipe');
+  await expect(recipes.getByRole('status').filter({ hasText: 'recipes match' })).toContainText('0 of 1 recipes match; selected recipe remains available');
+  await expect(recipes.getByLabel('Saved recipes').locator('option:checked')).toContainText('Dough');
+  await expect(recipes.getByText('Batch cost: $2.00', { exact: true })).toBeVisible();
+  await recipes.getByLabel('Saved recipes').selectOption('');
+  await expect(recipes.getByLabel('Saved recipes').locator('option')).toHaveCount(1);
+  await recipes.getByLabel('Search recipes').fill('');
+  await expect(recipes.getByLabel('Saved recipes').locator('option')).toHaveCount(2);
   const prep = page.locator('#prep');
   await prep.getByLabel('Tasks—one per line').fill('Portion dough');
   await prep.getByRole('button', { name: 'Create prep list', exact: true }).click();
