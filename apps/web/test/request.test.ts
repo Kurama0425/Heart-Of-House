@@ -9,6 +9,8 @@ test('request rejects malformed success responses and preserves API errors', asy
     await assert.rejects(request('/api'), /Unexpected API response/);
     globalThis.fetch = async () => new Response('not JSON', { status: 502 });
     await assert.rejects(request('/api'), /Unexpected API response/);
+    globalThis.fetch = async () => Response.json(null, { status: 500 });
+    await assert.rejects(request('/api'), /Request failed/);
     globalThis.fetch = async () => Response.json({ error: 'Price conflict' }, { status: 409 });
     await assert.rejects(request('/api'), /Price conflict/);
     globalThis.fetch = async () => Response.json({ ingredient: { purchase_price: null } });
