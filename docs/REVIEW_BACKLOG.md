@@ -18,3 +18,9 @@
 | OPEN | Frontend exposes only older create/edit controls | Add import, archive and template editing screens using FRONTEND_HANDOFF.md |
 | OPEN | Preview/receipt retention has no cleanup policy | Keep local; decide retention before hosted operation |
 | DEFERRED | Legacy migrations contain indexes redundant with UNIQUE indexes | Harmless for local use; remove later with a small reviewed migration after checking query plans |
+
+## November 27 stabilization checkpoint
+
+- FIXED in PR #12 (awaiting merge): malformed HTTP-200 JSON responses previously entered success paths; request helper now rejects them. Five frontend tests and full Kitchen checks passed at 7eb4827: https://github.com/Kurama0425/Heart-Of-House/actions/runs/45887885172.
+- Verified current open heads: PR #9 5cd6db3, PR #10 1c260e9, PR #11 6f0812b all have passing Kitchen checks. Historical failed browser runs were superseded; no test skips introduced.
+- PR #8 is merged. CSV import UI, archive controls and template editing remain unfinished; backend endpoints exist. Keep hosted operational data blocked pending authentication/authorization.
